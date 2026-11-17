@@ -36,6 +36,7 @@ from .modelo import (
     insights_ug,
     resumo_indicadores_acao,
 )
+from .perfil import PerfilAno
 from .resultados import ResultadoAcao, ResultadoIndicador, Resultados
 from .texto import (
     norm,
@@ -52,8 +53,8 @@ def _status_indicador(indicador: Indicador, resultado: ResultadoIndicador | None
     texto_resultado = resultado.resultado if resultado else ""
     if not texto_resultado or texto_resultado in {"-", "—"}:
         return "Pendente"
-    if resultado and resultado.meta_2026:
-        valor = percentual(texto_resultado, resultado.meta_2026)
+    if resultado and resultado.meta_ano:
+        valor = percentual(texto_resultado, resultado.meta_ano)
         if valor is not None:
             if valor >= 100:
                 return "Atingido"
@@ -70,7 +71,12 @@ def _status_indicador(indicador: Indicador, resultado: ResultadoIndicador | None
     return "Sem meta anual"
 
 
-def _status_acao(acao: Acao, resultado: ResultadoAcao | None, meta) -> str:
+def _status_acao(
+    acao: Acao,
+    resultado: ResultadoAcao | None,
+    meta,
+    perfil: PerfilAno,
+) -> str:
     if resultado and resultado.status:
         return resultado.status
     texto_resultado = resultado.resultado if resultado else ""
@@ -78,8 +84,10 @@ def _status_acao(acao: Acao, resultado: ResultadoAcao | None, meta) -> str:
         return "Pendente"
     if meta.tipo in {"nao_definida", "texto"}:
         return "Sem meta anual"
-    valor = _pct_acao(resultado, meta)
+    valor = _pct_acao(resultado, meta, perfil)
     if valor is None:
+        if perfil.meta_ano_tipo == "bloco" and not (resultado and resultado.meta_anual):
+            return "Sem meta anual"
         if meta.tipo == "percentual_plano":
             return "Sem meta física"
         return "Qualitativo"
@@ -90,7 +98,11 @@ def _status_acao(acao: Acao, resultado: ResultadoAcao | None, meta) -> str:
     return "Não iniciada"
 
 
-def _pct_acao(resultado: ResultadoAcao | None, meta) -> float | None:
+def _pct_acao(
+    resultado: ResultadoAcao | None,
+    meta,
+    perfil: PerfilAno,
+) -> float | None:
     if not resultado or not resultado.resultado:
         return None
     return percentual_meta(
@@ -98,6 +110,7 @@ def _pct_acao(resultado: ResultadoAcao | None, meta) -> float | None:
         meta.valor,
         tipo_meta=meta.tipo,
         meta_anual=resultado.meta_anual,
+        meta_ano_tipo=perfil.meta_ano_tipo,
     )
 
 
@@ -127,6 +140,7 @@ def _tabela_indicadores(
     programas: list[Programa],
     resultados: Resultados,
     id_tabela: str,
+    perfil: PerfilAno,
     *,
     incluir_programa: bool = False,
 ) -> str:
@@ -181,7 +195,7 @@ def _tabela_indicadores(
         ("Nº", "center"),
         ("Indicador", "left"),
         ("Referência atual", "right"),
-        ("Resultado 2026", "right"),
+        (f"Resultado {perfil.ano}", "right"),
         ("Referência 2029", "right"),
         ("Direção", "center"),
         ("Tendência", "center"),
@@ -201,6 +215,7 @@ def _tabela_acoes(
     programas: list[Programa],
     resultados: Resultados,
     id_tabela: str,
+    perfil: PerfilAno,
     *,
     incluir_programa: bool = False,
 ) -> str:
@@ -210,7 +225,7 @@ def _tabela_acoes(
     for programa in programas:
         for acao in programa.acoes:
             resultado = resultados.acao(programa.codigo, acao.num)
-            meta = parse_meta_acao(acao.meta_2026, acao.meta_2027_2029)
+            meta = parse_meta_acao(acao.meta_ano, acao.meta_bloco)
             texto_resultado = resultado.resultado if resultado else ""
             if texto_resultado:
                 resultado_html = f"<strong>{e(texto_resultado)}</strong>"
@@ -218,7 +233,7 @@ def _tabela_acoes(
                     resultado_html += f'<span class="cell-note">{e(resultado.unidade)}</span>'
             else:
                 resultado_html = '<span class="pending">Aguardando devolutiva</span>'
-            valor_pct = _pct_acao(resultado, meta)
+            valor_pct = _pct_acao(resultado, meta, perfil)
             pct_html = (
                 f"<strong>{pct(valor_pct)}</strong>"
                 if valor_pct is not None
@@ -249,7 +264,7 @@ def _tabela_acoes(
                     + nota
                 )
                 + td(
-                    meta_badge(meta)
+                    meta_badge(meta, perfil)
                     + (
                         f'<span class="cell-note">{e(meta.texto)}</span>'
                         if meta.tipo == "texto" and meta.texto
@@ -257,10 +272,13 @@ def _tabela_acoes(
                     ),
                     "right",
                 )
-                + td(e(acao.meta_2027_2029 or "—"), "right")
-                + td(resultado_html, "right")
+            )
+            if perfil.meta_bloco_label:
+                linha += td(e(acao.meta_bloco or "—"), "right")
+            linha += (
+                td(resultado_html, "right")
                 + td(pct_html, "right", valor_pct if valor_pct is not None else "")
-                + td(status_badge(_status_acao(acao, resultado, meta)), "center")
+                + td(status_badge(_status_acao(acao, resultado, meta, perfil)), "center")
                 + td(evidencia, "center")
                 + "</tr>"
             )
@@ -269,9 +287,12 @@ def _tabela_acoes(
     cabecalhos += [
         ("Nº", "center"),
         ("Ação", "left"),
-        ("Meta 2026", "right"),
-        ("Meta 2027-2029", "right"),
-        ("Resultado 2026", "right"),
+        (perfil.meta_ano_label, "right"),
+    ]
+    if perfil.meta_bloco_label:
+        cabecalhos.append((perfil.meta_bloco_label, "right"))
+    cabecalhos += [
+        (f"Resultado {perfil.ano}", "right"),
         ("% da meta", "right"),
         ("Status", "center"),
         ("Evidência", "center"),
@@ -285,7 +306,11 @@ def _tabela_acoes(
     )
 
 
-def _execucao_programa_compacto(programa_ug: ProgramaUG, resumo: ResumoUG) -> str:
+def _execucao_programa_compacto(
+    programa_ug: ProgramaUG,
+    resumo: ResumoUG,
+    perfil: PerfilAno,
+) -> str:
     if programa_ug.sem_execucao:
         return (
             '<div class="note bad" style="margin-top:12px"><strong>Sem execução registrada '
@@ -382,6 +407,7 @@ def _programa_card(
     resumo: ResumoUG,
     resultados: Resultados,
     detalhes_loa: list,
+    perfil: PerfilAno,
 ) -> str:
     programa = programa_ug.programa
     status: list[str] = []
@@ -438,10 +464,10 @@ def _programa_card(
         )
         + f'<div class="chips">{"".join(chips)}</div>'
         '<div class="panel"><h4>Indicadores do programa</h4>'
-        f"{_tabela_indicadores([programa], resultados, f'ind-{programa.codigo}')}</div>"
+        f"{_tabela_indicadores([programa], resultados, f'ind-{programa.codigo}', perfil)}</div>"
         '<div class="panel"><h4>Ações do programa</h4>'
-        f"{_tabela_acoes([programa], resultados, f'acao-{programa.codigo}')}</div>"
-        f"{_execucao_programa_compacto(programa_ug, resumo)}"
+        f"{_tabela_acoes([programa], resultados, f'acao-{programa.codigo}', perfil)}</div>"
+        f"{_execucao_programa_compacto(programa_ug, resumo, perfil)}"
         '<div class="panel" id="loa-'
         f'{e(programa.codigo)}"><h4>Execução LOA — projeto/atividade e natureza</h4>'
         '<p class="small muted">Código da ação orçamentária (projeto/atividade) e sua '
@@ -615,8 +641,8 @@ def _analise_critica(relatorio: Relatorio, resumo: ResumoUG) -> str:
         )
     if resumo.resultados_pendentes:
         dificuldades.append(
-            f"{resumo.resultados_pendentes} indicador(es)/ação(ões) sem resultado 2026 "
-            "informado; a análise qualitativa depende da devolutiva da UG."
+            f"{resumo.resultados_pendentes} indicador(es)/ação(ões) sem resultado "
+            f"{relatorio.perfil.ano} informado; a análise qualitativa depende da devolutiva da UG."
         )
     riscos = []
     for alerta in resumo.alertas:
@@ -691,7 +717,7 @@ def _notas_qualidade(relatorio: Relatorio) -> str:
         1
         for p in relatorio.ppa.programas
         for a in p.acoes
-        if parse_meta_acao(a.meta_2026, a.meta_2027_2029).tipo == "percentual_plano"
+        if parse_meta_acao(a.meta_ano, a.meta_bloco).tipo == "percentual_plano"
     )
     n_itens = len(relatorio.ppa.indicadores) + len(relatorio.ppa.acoes)
     n_resultados = relatorio.n_resultados_indicadores + relatorio.n_resultados_acoes
@@ -702,15 +728,15 @@ def _notas_qualidade(relatorio: Relatorio) -> str:
         "O raio-x usa o nome normalizado da UO como chave e exibe o código apenas como "
         "referência.</div>"
         f'<div class="note warn"><strong>Meta das ações:</strong> {n_meta} de '
-        f"{len(relatorio.ppa.acoes)} ações usam meta 2026 em percentual do plano (ex.: 25%), "
-        "não em quantidade física. O raio-x classifica a meta e não calcula execução física "
-        "contra percentual sem a meta anual informada.</div>"
+        f"{len(relatorio.ppa.acoes)} ações usam {relatorio.perfil.meta_ano_label} em "
+        "percentual do plano/bloco, não em quantidade física. O raio-x classifica a meta e "
+        "não calcula execução física contra percentual sem a meta anual informada.</div>"
         '<div class="note warn"><strong>Execução:</strong> o Consolidado é de liquidações '
         "(Valor R$), com anulados negativos. Empenhado e pago não estão disponíveis nesta "
         "base. O raio-x mostra liquidado líquido.</div>"
         f'<div class="note info"><strong>Resultados:</strong> {n_resultados} de {n_itens} '
-        "indicadores/ações têm resultado 2026 na base. O protótipo usa placeholders; a camada "
-        "de resultados pode ser alimentada por CSV/XLSX.</div>"
+        f"indicadores/ações têm resultado {relatorio.perfil.ano} na base. O relatório usa "
+        "placeholders; a camada de resultados pode ser alimentada por CSV/XLSX.</div>"
         "</div>"
     )
 
@@ -720,9 +746,9 @@ def _metodologia(relatorio: Relatorio, resumo: ResumoUG | None = None) -> str:
     return (
         '<div class="grid grid-2">'
         '<div class="card"><h3>Fontes e chaves</h3>'
-        "<p><strong>PPA 2026-2029:</strong> abas Programas, Indicadores e Ações. "
+        f"<p><strong>{relatorio.perfil.titulo_ppa}:</strong> abas Programas, Indicadores e Ações. "
         "O código do programa é a chave dos indicadores e das ações.</p>"
-        f"<p><strong>Contas 2026:</strong> <code>{e(relatorio.contas.arquivo.name)}</code>, "
+        f"<p><strong>Contas {relatorio.perfil.ano}:</strong> <code>{e(relatorio.contas.arquivo.name)}</code>, "
         "aba Consolidado. O vínculo PPA↔contas é o campo <strong>Programa de governo</strong>. "
         "Não há vínculo automático entre a ação do PPA e a ação da LOA; a ação LOA é exibida "
         "pelo código de <strong>Projeto/Atividade</strong>.</p>"
@@ -735,7 +761,8 @@ def _metodologia(relatorio: Relatorio, resumo: ResumoUG | None = None) -> str:
         "<p><strong>Indicadores:</strong> o PPA traz referência atual e referência 2029, sem "
         "meta anual. A direção é inferida pela variação entre as referências; a tendência "
         "compara o resultado com a referência atual.</p>"
-        "<p><strong>Ações:</strong> a meta 2026 pode ser percentual do plano ou quantidade. "
+        f"<p><strong>Ações:</strong> a {relatorio.perfil.meta_ano_label} pode ser percentual do "
+        "plano/bloco ou quantidade. "
         "O % da meta só é calculado quando a meta e o resultado são compatíveis.</p>"
         "<p><strong>Compartilhados:</strong> o dono é provisório (mapa do DEFINICAO do RAM); "
         "cada UG mostra sua parte e o total do programa.</p></div>"
@@ -829,11 +856,13 @@ def _secao_uos(relatorio: Relatorio, resumo: ResumoUG) -> str:
 def gerar_pagina_ug(relatorio: Relatorio, resumo: ResumoUG) -> str:
     resultados = relatorio.resultados
     hero_html = hero(
-        "Raio-X Técnico do PPA 2026-2029",
-        f"UG {resumo.codigo} — {resumo.nome} · diagnóstico completo do 1º ano",
+        relatorio.perfil.titulo,
+        f"UG {resumo.codigo} — {resumo.nome} · diagnóstico de {relatorio.perfil.ano} "
+        f"({relatorio.perfil.rotulo_ano} do PPA)",
         f"UG {resumo.codigo}",
         arquivo_contas=relatorio.contas.arquivo.name,
         gerado_em=relatorio.gerado_em,
+        perfil=relatorio.perfil,
     )
     links_topo = [
         ("resumo", "Resumo"),
@@ -869,15 +898,19 @@ def gerar_pagina_ug(relatorio: Relatorio, resumo: ResumoUG) -> str:
         '<div class="kpi-grid">'
         + kpi_programas
         + kpi("Indicadores", f"{resumo.n_indicadores}", "referência atual e 2029; sem meta anual", "teal")
-        + kpi("Ações", f"{resumo.n_acoes}", "meta 2026 do PPA", "teal")
+        + kpi("Ações", f"{resumo.n_acoes}", f"{relatorio.perfil.meta_ano_label} do PPA", "teal")
         + kpi(
-            "Liquidado 2026",
+            f"Liquidado {relatorio.perfil.ano}",
             brl_curto(resumo.execucao_total),
             f"{pct(resumo.share_global)} do total municipal",
             "green",
         )
         + kpi("UOs", f"{len(resumo.uos)}", "subseções por unidade orçamentária")
-        + kpi("Resultados", f"{resumo.n_resultados}/{n_itens}", "resultados de 2026 informados")
+        + kpi(
+            "Resultados",
+            f"{resumo.n_resultados}/{n_itens}",
+            f"resultados de {relatorio.perfil.ano} informados",
+        )
         + kpi("Sem indicador", f"{resumo.n_sem_indicador}", "programa(s) próprio(s)", "amber")
         + kpi("Sem execução", f"{resumo.n_sem_execucao}", "programa(s) próprio(s)", "red")
         + "</div>"
@@ -904,7 +937,9 @@ def gerar_pagina_ug(relatorio: Relatorio, resumo: ResumoUG) -> str:
         '<span class="small muted" id="contador-programas"></span>'
         "</div>"
         + "".join(
-            _programa_card(p, resumo, resultados, detalhes_por_programa.get(p.codigo, []))
+            _programa_card(
+                p, resumo, resultados, detalhes_por_programa.get(p.codigo, []), relatorio.perfil
+            )
             for p in resumo.programas
         ),
         "Cada programa traz ficha, indicadores, ações do PPA e a execução LOA por "
@@ -928,7 +963,7 @@ def gerar_pagina_ug(relatorio: Relatorio, resumo: ResumoUG) -> str:
     execucao_secao = sec(
         "execucao",
         "Execução orçamentária",
-        "Execução 2026 da UG",
+        f"Execução {relatorio.perfil.ano} da UG",
         '<div class="mini-kpis">'
         f'<div class="mini"><span>Liquidado</span><strong>{brl(resumo.execucao_total)}</strong></div>'
         f'<div class="mini"><span>Realizado</span><strong>{brl(resumo.execucao_realizado)}</strong></div>'
@@ -992,12 +1027,16 @@ def gerar_pagina_ug(relatorio: Relatorio, resumo: ResumoUG) -> str:
         "Resultados e evidências",
         '<div class="grid grid-4">'
         + kpi("Itens", str(n_itens), "indicadores + ações", "teal")
-        + kpi("Com resultado", str(resumo.n_resultados), "resultados 2026 informados")
+        + kpi(
+            "Com resultado",
+            str(resumo.n_resultados),
+            f"resultados de {relatorio.perfil.ano} informados",
+        )
         + kpi("Evidências", str(n_evidencias), "arquivos/links registrados", "green")
         + kpi("Pendentes", str(resumo.resultados_pendentes), "dependem da devolutiva", "amber")
         + "</div>"
         + '<div class="card" style="margin-top:12px"><h3>Orientação</h3>'
-        "<p>Nenhum resultado de 2026 foi informado na base. O protótipo mostra "
+        f"<p>Nenhum resultado de {relatorio.perfil.ano} foi informado na base. O relatório mostra "
         "<strong>Aguardando devolutiva</strong> em cada indicador e ação.</p>"
         "<p>Quando a coleta for preenchida, o raio-x aceita resultados, análise, status, "
         "justificativa, próximos passos e IDs de evidência. Evidências obrigatórias para "
@@ -1052,10 +1091,11 @@ def gerar_pagina_ug(relatorio: Relatorio, resumo: ResumoUG) -> str:
         + metodologia_secao
     )
     return layout(
-        f"Raio-X PPA 2026-2029 · UG {resumo.codigo} — {resumo.nome}",
+        f"{relatorio.perfil.titulo} · UG {resumo.codigo} — {resumo.nome}",
         hero_html,
         topbar_html,
         corpo,
+        perfil=relatorio.perfil,
     )
 
 

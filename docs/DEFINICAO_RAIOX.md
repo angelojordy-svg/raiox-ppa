@@ -1,6 +1,6 @@
 # Raio-X Técnico do PPA 2026-2029 — Definição do Projeto
 
-**Status:** definição + versão completa das 35 UGs gerada em 2026-11-17; aguardando validação final
+**Status:** definição + versão completa de 2026 + perfis multi-ano 2026-2029; aguardando validação final
 **Data:** 2026-11-17
 **Projeto:** `laboratorio/raiox` (promover para `planejamento/raiox` quando houver recorrência)
 **Produto:** diagnóstico técnico interno por Unidade Gestora (UG), independente do RAM
@@ -173,7 +173,23 @@ Quando a UG tem mais de uma UO, a seção de execução mostra o desdobramento p
 - Qualidade/ausência de evidências.
 - Exceções de qualidade de dados.
 
-### 7.4 Publicação
+### 7.4 Multi-ano
+
+O código usa **perfis anuais** (`perfil.py`):
+
+| Ano | Contas | Saída | Meta no PPA |
+|---|---|---|---|
+| 2026 | `despesas_programas_2026_*.xlsx` | `Saida/raiox/` | Meta 2026 + bloco 2027-2029 |
+| 2027 | `despesas_programas_2027_*.xlsx` | `Saida/raiox/2027/` | Bloco 2027-2029 (sem meta anual explícita) |
+| 2028 | `despesas_programas_2028_*.xlsx` | `Saida/raiox/2028/` | Bloco 2027-2029 |
+| 2029 | `despesas_programas_2029_*.xlsx` | `Saida/raiox/2029/` | Bloco 2027-2029 |
+
+O PPA é o mesmo 2026-2029. Para 2027-2029, a coleta deve informar a **meta anual**
+(`meta_anual`) da ação; sem ela, o relatório mostra o bloco e não calcula o % da meta.
+Comandos: `scripts\gerar_ano.bat 2027`, `scripts\gerar_pdf.bat 2027` e
+`scripts\publicar_site.bat --ano 2027` (o site recebe o ano em subpasta).
+
+### 7.5 Publicação
 
 - **Código:** https://github.com/angelojordy-svg/raiox-ppa (público; somente código, docs,
   testes e scripts).
@@ -183,7 +199,7 @@ Quando a UG tem mais de uma UO, a seção de execução mostra o desdobramento p
 - Atualização do site: gerar HTML/PDF, copiar `index.html`, `ug_*.html` e `pdf/` para o repo
   de deploy e commitar.
 
-### 7.5 Formatos de saída
+### 7.6 Formatos de saída
 
 - **HTML interativo** com filtros, busca, ordenação de tabelas, navegação e impressão.
 - **PDF/print por UG** pela impressão do HTML no navegador (CSS `@media print`) ou por
@@ -452,9 +468,10 @@ Comandos:
 - `_dados/Saida/raiox/pdf/` — 35 PDFs por UG + PDF do índice.
 - `_dados/Saida/raiox/manifest.json` — fontes, escopo, contagens e PDFs.
 - `_dados/Saida/raiox/entrada/` — modelos CSV.
+- Perfis 2027-2029: subpastas `2027/`, `2028/`, `2029/` com o mesmo layout.
 - Código: https://github.com/angelojordy-svg/raiox-ppa
 - Site: https://angelojordy-svg.github.io/raiox-ppa-site/
 
-Verificação: 53 testes passaram; `ruff check src tests` sem erros. A UG 004 tem 30 páginas
+Verificação: 57 testes passaram; `ruff check src tests` sem erros. A UG 004 tem 30 páginas
 no PDF; o detalhamento completo por programa → ação LOA (projeto/atividade) → natureza
 está nos cartões de programa.

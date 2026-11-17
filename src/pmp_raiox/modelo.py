@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
-from . import config
+from .perfil import PERFIL_2026, PerfilAno
 from .dados import Contas, Execucao, PPA, Programa
 from .resultados import Resultados
 from .texto import (
@@ -211,6 +211,7 @@ class ForaPPA:
 class Relatorio:
     ppa: PPA
     contas: Contas
+    perfil: PerfilAno
     resultados: Resultados
     ugs: dict[str, ResumoUG]
     cobertura: dict[str, CoberturaPrograma]
@@ -326,6 +327,7 @@ def _alertas_programa(
     execucao_global: float,
     vinculo_provisorio: bool,
     resultados: Resultados,
+    perfil: PerfilAno,
 ) -> list[Alerta]:
     alertas: list[Alerta] = []
     if execucao.linhas == 0:
@@ -333,7 +335,7 @@ def _alertas_programa(
             Alerta(
                 "alta",
                 "programa_sem_execucao",
-                "Programa sem execução registrada no Consolidado 2026.",
+                f"Programa sem execução registrada no Consolidado {perfil.ano}.",
                 codigo_programa=programa.codigo,
                 codigo_ug=ug,
             )
@@ -383,13 +385,13 @@ def _alertas_programa(
                 codigo_ug=ug,
             )
         )
-    sem_meta = [a.num for a in programa.acoes if not texto(a.meta_2026)]
+    sem_meta = [a.num for a in programa.acoes if not texto(a.meta_ano)]
     if sem_meta:
         alertas.append(
             Alerta(
                 "media",
                 "acao_sem_meta",
-                "Ação(ões) sem meta 2026: " + ", ".join(sem_meta) + ".",
+                f"Ação(ões) sem {perfil.meta_ano_label}: " + ", ".join(sem_meta) + ".",
                 codigo_programa=programa.codigo,
                 codigo_ug=ug,
             )
@@ -397,16 +399,16 @@ def _alertas_programa(
     metas_percentuais = [
         a
         for a in programa.acoes
-        if parse_meta_acao(a.meta_2026, a.meta_2027_2029).tipo == "percentual_plano"
+        if parse_meta_acao(a.meta_ano, a.meta_bloco).tipo == "percentual_plano"
     ]
     if metas_percentuais:
         alertas.append(
             Alerta(
                 "info",
                 "meta_percentual",
-                f"{len(metas_percentuais)} de {len(programa.acoes)} ações usam meta percentual "
-                "do plano (ex.: 25%), não meta física anual. A coleta deve informar a meta anual "
-                "em quantidade ou o resultado em % do plano.",
+                f"{len(metas_percentuais)} de {len(programa.acoes)} ações usam meta "
+                f"{perfil.meta_ano_label} em percentual, não meta física anual. A coleta deve "
+                "informar a meta anual em quantidade ou o resultado em % do plano/bloco.",
                 codigo_programa=programa.codigo,
                 codigo_ug=ug,
             )
@@ -440,7 +442,7 @@ def _alertas_programa(
                 "info",
                 "resultado_pendente",
                 f"{total_itens - preenchidos} de {total_itens} indicadores/ações sem resultado "
-                "2026 informado.",
+                f"{perfil.ano} informado.",
                 codigo_programa=programa.codigo,
                 codigo_ug=ug,
             )
@@ -456,6 +458,7 @@ def _programa_ug(
     contas: Contas,
     resultados: Resultados,
     vinculo_provisorio: bool,
+    perfil: PerfilAno,
 ) -> ProgramaUG:
     execucao = contas.execucao(programa.codigo, ug)
     execucao_global = contas.total_programa(programa.codigo)
@@ -465,7 +468,7 @@ def _programa_ug(
             continue
         valor = contas.execucao(programa.codigo, outra).valor_liquido
         share = valor / execucao_global * 100 if execucao_global else 0.0
-        outras.append(UGRef(outra, config.nome_ug(outra), valor, share))
+        outras.append(UGRef(outra, perfil.nome_ug(outra), valor, share))
     alertas = _alertas_programa(
         programa,
         ug,
@@ -474,13 +477,14 @@ def _programa_ug(
         execucao_global,
         vinculo_provisorio,
         resultados,
+        perfil,
     )
     meta_percentual = sum(
         1
         for a in programa.acoes
-        if parse_meta_acao(a.meta_2026, a.meta_2027_2029).tipo == "percentual_plano"
+        if parse_meta_acao(a.meta_ano, a.meta_bloco).tipo == "percentual_plano"
     )
-    sem_meta = sum(1 for a in programa.acoes if not texto(a.meta_2026))
+    sem_meta = sum(1 for a in programa.acoes if not texto(a.meta_ano))
     sem_ref = sum(
         1 for i in programa.indicadores if not texto(i.ref_atual) or i.ref_atual == "-"
     )
@@ -545,6 +549,7 @@ def _alertas_ug(
     programas: list[ProgramaUG],
     total: float,
     resultados: Resultados,
+    perfil: PerfilAno,
 ) -> list[Alerta]:
     alertas: list[Alerta] = []
     codigos_uo: dict[str, list[str]] = defaultdict(list)
@@ -570,7 +575,7 @@ def _alertas_ug(
             Alerta(
                 "alta",
                 "ug_sem_execucao",
-                "UG sem execução líquida registrada em 2026.",
+                f"UG sem execução líquida registrada em {perfil.ano}.",
                 codigo_ug=ug,
             )
         )
@@ -579,10 +584,10 @@ def _alertas_ug(
     n_pendentes = max(0, n_itens - n_resultados)
     if n_itens and n_pendentes:
         mensagem = (
-            "Nenhum resultado de indicador ou ação foi informado para esta UG; "
+            f"Nenhum resultado de indicador ou ação foi informado para esta UG em {perfil.ano}; "
             "o raio-x está em modo de prévia."
             if n_resultados == 0
-            else f"{n_pendentes} de {n_itens} indicadores/ações sem resultado 2026 informado."
+            else f"{n_pendentes} de {n_itens} indicadores/ações sem resultado {perfil.ano} informado."
         )
         alertas.append(Alerta("info", "resultado_pendente", mensagem, codigo_ug=ug))
     if not resultados.evidencias:
@@ -618,8 +623,9 @@ def _alertas_ug(
             Alerta(
                 "info",
                 "meta_percentual",
-                f"{metas} de {n_acoes} ações usam meta percentual do plano, não meta física "
-                "anual. A coleta deve informar a meta anual ou o resultado em % do plano.",
+                f"{metas} de {n_acoes} ações usam meta {perfil.meta_ano_label} em percentual, "
+                "não meta física anual. A coleta deve informar a meta anual ou o resultado em "
+                "% do plano/bloco.",
                 codigo_ug=ug,
             )
         )
@@ -644,7 +650,9 @@ def construir_relatorio(
     contas: Contas,
     resultados: Resultados | None = None,
     fontes: dict[str, Path] | None = None,
+    perfil: PerfilAno | None = None,
 ) -> Relatorio:
+    perfil = perfil or PERFIL_2026
     resultados = resultados if resultados is not None else Resultados()
     cobertura: dict[str, CoberturaPrograma] = {}
     programas_por_ug: dict[str, list[ProgramaUG]] = defaultdict(list)
@@ -653,7 +661,7 @@ def construir_relatorio(
 
     for programa in ppa.programas:
         codigo = programa.codigo
-        if codigo in config.PROGRAMAS_EXCLUIDOS:
+        if codigo in perfil.programas_excluidos:
             item = CoberturaPrograma(
                 programa=programa,
                 ugs_execucao=[],
@@ -667,9 +675,9 @@ def construir_relatorio(
             continue
 
         exec_ugs = contas.ugs_do_programa(codigo)
-        provisorio = config.PROGRAMAS_SEM_EXECUCAO.get(codigo)
+        provisorio = perfil.programas_sem_execucao.get(codigo)
         if exec_ugs:
-            dono = config.DONOS_COMPARTILHADOS.get(codigo)
+            dono = perfil.donos_compartilhados.get(codigo)
             vinculo_provisorio = False
             if dono is None:
                 dono = provisorio[0] if provisorio else min(exec_ugs)
@@ -687,6 +695,7 @@ def construir_relatorio(
                         contas,
                         resultados,
                         vinculo_provisorio,
+                        perfil,
                     )
                 )
             cobertura[codigo] = CoberturaPrograma(
@@ -699,7 +708,7 @@ def construir_relatorio(
             )
             continue
 
-        if codigo in config.PROGRAMAS_SEM_UG:
+        if codigo in perfil.programas_sem_ug:
             item = CoberturaPrograma(
                 programa=programa,
                 ugs_execucao=[],
@@ -723,6 +732,7 @@ def construir_relatorio(
                     contas,
                     resultados,
                     True,
+                    perfil,
                 )
             )
             cobertura[codigo] = CoberturaPrograma(
@@ -767,16 +777,17 @@ def construir_relatorio(
         n_resultados_acoes = sum(p.n_resultados_acoes for p in proprios + compartilhados)
         alertas = _alertas_ug(
             codigo_ug,
-            config.nome_ug(codigo_ug),
+            perfil.nome_ug(codigo_ug),
             uos,
             proprios + compartilhados,
             total,
             resultados,
+            perfil,
         )
         ugs[codigo_ug] = ResumoUG(
             codigo=codigo_ug,
-            nome=config.nome_ug(codigo_ug),
-            slug=config.slug_ug(codigo_ug),
+            nome=perfil.nome_ug(codigo_ug),
+            slug=perfil.slug_ug(codigo_ug),
             uos=uos,
             programas_proprios=proprios,
             programas_compartilhados=compartilhados,
@@ -805,7 +816,7 @@ def construir_relatorio(
         for ug in contas.ugs_do_programa(codigo):
             valor = contas.execucao(codigo, ug).valor_liquido
             share = valor / exec_total.valor_liquido * 100 if exec_total.valor_liquido else 0.0
-            ugs_ref.append(UGRef(ug, config.nome_ug(ug), valor, share))
+            ugs_ref.append(UGRef(ug, perfil.nome_ug(ug), valor, share))
         ugs_ref.sort(key=lambda u: -u.valor)
         fora_ppa.append(
             ForaPPA(
@@ -859,16 +870,16 @@ def construir_relatorio(
         1
         for p in ppa.programas
         for a in p.acoes
-        if parse_meta_acao(a.meta_2026, a.meta_2027_2029).tipo == "percentual_plano"
+        if parse_meta_acao(a.meta_ano, a.meta_bloco).tipo == "percentual_plano"
     )
     if n_meta_percentual:
         alertas_globais.append(
             Alerta(
                 "media",
                 "acoes_meta_percentual",
-                f"{n_meta_percentual} de {len(ppa.acoes)} ações têm meta 2026 em percentual do "
-                "plano. Não é possível calcular execução física contra a meta anual sem a meta "
-                "física informada pela UG.",
+                f"{n_meta_percentual} de {len(ppa.acoes)} ações têm meta "
+                f"{perfil.meta_ano_label} em percentual do plano/bloco. Não é possível calcular "
+                "execução física contra a meta anual sem a meta física informada pela UG.",
             )
         )
     n_sem_ref = sum(
@@ -897,14 +908,15 @@ def construir_relatorio(
         Alerta(
             "info",
             "resultados_pendentes",
-            "A base não contém resultados de 2026. O protótipo usa placeholders e será "
-            "alimentado pela camada de resultados/evidências.",
+            f"A base não contém resultados de {perfil.ano}. O relatório usa placeholders e "
+            "será alimentado pela camada de resultados/evidências.",
         )
     )
 
     return Relatorio(
         ppa=ppa,
         contas=contas,
+        perfil=perfil,
         resultados=resultados,
         ugs=ugs,
         cobertura=cobertura,
@@ -913,7 +925,7 @@ def construir_relatorio(
         fora_ppa=fora_ppa,
         alertas_globais=sorted(alertas_globais, key=lambda a: (a.ordem, a.tipo)),
         gerado_em=datetime.now(),
-        fontes=fontes or {"ppa": config.PPA_PADRAO, "contas": contas.arquivo},
+        fontes=fontes or {"ppa": perfil.ppa_path, "contas": contas.arquivo},
     )
 
 
@@ -999,7 +1011,7 @@ def insights_ug(resumo: ResumoUG, relatorio: Relatorio) -> list[str]:
         )
     if resumo.n_indicadores + resumo.n_acoes:
         insights.append(
-            f"Resultados 2026: {resumo.n_resultados} de "
+            f"Resultados {relatorio.perfil.ano}: {resumo.n_resultados} de "
             f"{resumo.n_indicadores + resumo.n_acoes} indicadores/ações informados "
             f"({formatar_pct(resumo.n_resultados / (resumo.n_indicadores + resumo.n_acoes) * 100)})."
         )
@@ -1007,7 +1019,7 @@ def insights_ug(resumo: ResumoUG, relatorio: Relatorio) -> list[str]:
         metas = sum(p.n_acoes_meta_percentual for p in resumo.programas)
         if metas:
             insights.append(
-                f"Metas de ação: {metas} de {resumo.n_acoes} usam percentual do plano, "
+                f"Metas de ação: {metas} de {resumo.n_acoes} usam percentual do plano/bloco, "
                 "não meta física anual."
             )
     insights.append(
@@ -1018,7 +1030,7 @@ def insights_ug(resumo: ResumoUG, relatorio: Relatorio) -> list[str]:
 
 
 def resumo_indicadores_acao(programa: Programa) -> dict[str, int]:
-    metas = [parse_meta_acao(a.meta_2026, a.meta_2027_2029) for a in programa.acoes]
+    metas = [parse_meta_acao(a.meta_ano, a.meta_bloco) for a in programa.acoes]
     return {
         "indicadores": len(programa.indicadores),
         "acoes": len(programa.acoes),

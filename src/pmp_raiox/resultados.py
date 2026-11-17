@@ -6,14 +6,14 @@ import csv
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import config
+from .perfil import PERFIL_2026, PerfilAno
 from .texto import norm_cabecalho, texto
 
 CABECALHO_INDICADORES = [
     "codigo_programa",
     "n_indicador",
     "resultado",
-    "meta_2026",
+    "meta_ano",
     "unidade",
     "data_apuracao",
     "fonte_resultado",
@@ -52,7 +52,8 @@ MAPA_INDICADORES = {
     "numero do indicador": "n_indicador",
     "resultado": "resultado",
     "resultado 2026": "resultado",
-    "meta 2026": "meta_2026",
+    "meta 2026": "meta_ano",
+    "meta ano": "meta_ano",
     "unidade": "unidade",
     "data apuracao": "data_apuracao",
     "data de apuracao": "data_apuracao",
@@ -102,13 +103,17 @@ class ResultadoIndicador:
     codigo_programa: str
     n: str
     resultado: str = ""
-    meta_2026: str = ""
+    meta_ano: str = ""
     unidade: str = ""
     data_apuracao: str = ""
     fonte_resultado: str = ""
     analise: str = ""
     status: str = ""
     evidencia_id: str = ""
+
+    @property
+    def meta_2026(self) -> str:
+        return self.meta_ano
 
 
 @dataclass(frozen=True)
@@ -200,8 +205,12 @@ def _ler_csv(caminho: Path, mapa: dict[str, str], obrigatorios: list[str]) -> li
     return linhas
 
 
-def carregar_resultados(pasta: Path | str | None = None) -> Resultados:
-    base = Path(pasta) if pasta else config.ENTRADA
+def carregar_resultados(
+    pasta: Path | str | None = None,
+    perfil: PerfilAno | None = None,
+) -> Resultados:
+    perfil = perfil or PERFIL_2026
+    base = Path(pasta) if pasta else perfil.entrada_dir
     resultados = Resultados()
     if not base.exists():
         return resultados
@@ -214,7 +223,7 @@ def carregar_resultados(pasta: Path | str | None = None) -> Resultados:
                 codigo_programa=linha["codigo_programa"],
                 n=linha["n_indicador"],
                 resultado=linha.get("resultado", ""),
-                meta_2026=linha.get("meta_2026", ""),
+                meta_ano=linha.get("meta_ano", ""),
                 unidade=linha.get("unidade", ""),
                 data_apuracao=linha.get("data_apuracao", ""),
                 fonte_resultado=linha.get("fonte_resultado", ""),
@@ -270,8 +279,12 @@ def _criar_csv(caminho: Path, cabecalho: list[str]) -> bool:
     return True
 
 
-def criar_templates(pasta: Path | str | None = None) -> list[Path]:
-    base = Path(pasta) if pasta else config.ENTRADA
+def criar_templates(
+    pasta: Path | str | None = None,
+    perfil: PerfilAno | None = None,
+) -> list[Path]:
+    perfil = perfil or PERFIL_2026
+    base = Path(pasta) if pasta else perfil.entrada_dir
     base.mkdir(parents=True, exist_ok=True)
     criados: list[Path] = []
     for nome, cabecalho in (

@@ -6,6 +6,7 @@ import html
 from datetime import datetime
 
 from . import __version__, config
+from .perfil import PerfilAno
 from .texto import (
     direcao_indicador,
     formatar_brl,
@@ -499,12 +500,13 @@ def status_badge(status: str) -> str:
     return badge(status or "Pendente", tom)
 
 
-def meta_badge(meta) -> str:
+def meta_badge(meta, perfil: PerfilAno) -> str:
     if meta.tipo == "percentual_plano":
         total = ""
         if meta.total_4anos is not None:
             total = f'<span class="cell-note">total 4 anos: {num(meta.total_4anos)}%</span>'
-        return badge(f"{num(meta.valor)}% do plano", "info") + total
+        rotulo = "bloco" if perfil.meta_ano_tipo == "bloco" else "plano"
+        return badge(f"{num(meta.valor)}% do {rotulo}", "info") + total
     if meta.tipo == "quantidade":
         total = ""
         if meta.total_4anos is not None:
@@ -653,6 +655,7 @@ def hero(
     *,
     arquivo_contas: str,
     gerado_em: datetime,
+    perfil: PerfilAno,
     acoes: str = "",
     link_indice: bool = True,
 ) -> str:
@@ -666,7 +669,7 @@ def hero(
         f"<h1>{e(titulo)}</h1>"
         f'<p class="hero-sub">{e(subtitulo)}</p>'
         '<div class="hero-meta">'
-        '<span class="pill">PPA 2026-2029</span>'
+        f'<span class="pill">{e(perfil.titulo_ppa)}</span>'
         f'<span class="pill">Contas: {e(arquivo_contas)}</span>'
         f'<span class="pill">Gerado em {gerado_em:%d/%m/%Y %H:%M}</span>'
         f'<span class="pill">versão {e(__version__)}</span>'
@@ -685,7 +688,13 @@ def topbar(links: list[tuple[str, str]]) -> str:
     return f'<nav class="topbar no-print"><div class="wrap topbar-inner">{itens}</div></nav>'
 
 
-def layout(titulo: str, hero_html: str, topbar_html: str, corpo: str) -> str:
+def layout(
+    titulo: str,
+    hero_html: str,
+    topbar_html: str,
+    corpo: str,
+    perfil: PerfilAno,
+) -> str:
     return (
         "<!DOCTYPE html>"
         '<html lang="pt-BR"><head><meta charset="utf-8">'
@@ -694,7 +703,7 @@ def layout(titulo: str, hero_html: str, topbar_html: str, corpo: str) -> str:
         f"<style>{CSS}</style></head><body>"
         f'{hero_html}{topbar_html}<main class="wrap">{corpo}</main>'
         '<footer class="footer"><div class="wrap">'
-        "<strong>Raio-X Técnico do PPA 2026-2029</strong> · produto interno da equipe técnica. "
+        f"<strong>{e(perfil.titulo)}</strong> · produto interno da equipe técnica. "
         "Não substitui o RAM nem o resumo executivo de contas. "
         f"Gerado por pmp_raiox {e(__version__)}."
         "</div></footer>"

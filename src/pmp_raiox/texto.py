@@ -272,8 +272,11 @@ def percentual_meta(
     *,
     tipo_meta: str = "",
     meta_anual: Any = "",
+    meta_ano_tipo: str = "anual",
 ) -> float | None:
     if not texto(resultado) or not texto(meta_valor):
+        return None
+    if meta_ano_tipo == "bloco" and not texto(meta_anual):
         return None
     if tipo_meta in {"nao_definida", "texto"} and not texto(meta_anual):
         return None

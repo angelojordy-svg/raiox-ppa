@@ -11,13 +11,20 @@ resultados/evidências, análise e alertas.
 ```bat
 scripts\gerar_prototipo.bat
 scripts\gerar_tudo.bat
+scripts\gerar_ano.bat 2027
 scripts\gerar_pdf.bat
+scripts\gerar_pdf.bat 2027
+scripts\publicar_site.bat --ano 2027
 scripts\verificar.bat
 scripts\abrir_prototipo.bat
 ```
 
 `gerar_prototipo.bat` regenera apenas a UG 004 e um índice de prévia. Para a versão
-completa, use `gerar_tudo.bat`.
+completa, use `gerar_tudo.bat`. O `gerar_ano.bat <ano>` usa o perfil do ano (2026 a 2029).
+
+**Multi-ano:** 2026 fica na raiz de `_dados/Saida/raiox/`; 2027, 2028 e 2029 ficam em
+subpastas do ano. O PPA 2026-2029 é o mesmo; em 2027-2029 o PPA só traz o bloco
+2027-2029, então a meta anual deve ser informada na coleta (`meta_anual`).
 
 ## Saídas
 

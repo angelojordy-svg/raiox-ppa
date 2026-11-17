@@ -72,7 +72,7 @@ def _leia_me(ws, relatorio: Relatorio, escopo: str) -> None:
     ws.column_dimensions["A"].width = 26
     ws.column_dimensions["B"].width = 110
     linhas = [
-        ("Produto", "Raio-X Técnico do PPA 2026-2029 — planilha de apoio"),
+        ("Produto", f"{relatorio.perfil.titulo} — planilha de apoio"),
         ("Versão", __version__),
         ("Gerado em", relatorio.gerado_em.strftime("%d/%m/%Y %H:%M")),
         ("Escopo", escopo),
@@ -93,7 +93,7 @@ def _leia_me(ws, relatorio: Relatorio, escopo: str) -> None:
         ("Resultados informados", relatorio.n_resultados_indicadores + relatorio.n_resultados_acoes),
         ("Evidências", relatorio.n_evidencias),
     ]
-    ws["A1"] = "RAIO-X TÉCNICO DO PPA 2026-2029"
+    ws["A1"] = relatorio.perfil.titulo.upper()
     ws["A1"].font = Font(bold=True, size=16, color=AZUL)
     ws["A2"] = "Planilha de apoio — produto interno da equipe técnica"
     ws["A2"].font = Font(italic=True, size=11, color="5B6B7C")
@@ -109,7 +109,7 @@ def _leia_me(ws, relatorio: Relatorio, escopo: str) -> None:
         "Notas técnicas:",
         "1. A base de contas é de liquidações (Valor R$), com anulados negativos. Não há empenhado/pago no Consolidado.",
         "2. O código da UO no Consolidado não é único; a chave usada é o nome normalizado da UO.",
-        "3. A maior parte das ações tem meta 2026 em percentual do plano (ex.: 25%), não em quantidade física.",
+        f"3. A maior parte das ações tem {relatorio.perfil.meta_ano_label} em percentual do plano/bloco (ex.: 25%), não em quantidade física.",
         "4. Os indicadores têm referência atual e referência 2029, sem meta anual.",
         "5. Programas sem execução usam o mapa provisório do DEFINICAO do RAM; validar.",
         "6. Resultados e evidências estão pendentes; a camada de entrada aceita CSV em _dados/Saida/raiox/entrada.",
@@ -243,7 +243,7 @@ def _aba_indicadores(ws, relatorio: Relatorio, programas: list) -> None:
         ("Nº", 6),
         ("Fonte", 30),
         ("Referência atual", 16),
-        ("Resultado 2026", 16),
+        (f"Resultado {relatorio.perfil.ano}", 16),
         ("Referência 2029", 16),
         ("Direção", 12),
         ("Tendência", 13),
@@ -291,10 +291,10 @@ def _aba_acoes(ws, relatorio: Relatorio, programas: list) -> None:
         ("Nº", 6),
         ("Tipo", 12),
         ("Produto", 24),
-        ("Meta 2026", 14),
+        (relatorio.perfil.meta_ano_label, 14),
         ("Tipo da meta", 18),
-        ("Meta 2027-2029", 14),
-        ("Resultado 2026", 15),
+        (relatorio.perfil.meta_bloco_label or "Meta do bloco", 14),
+        (f"Resultado {relatorio.perfil.ano}", 15),
         ("% da meta", 10),
         ("Status", 14),
         ("Evidência", 12),
@@ -305,7 +305,7 @@ def _aba_acoes(ws, relatorio: Relatorio, programas: list) -> None:
     linha = 2
     for programa in programas:
         for acao in programa.acoes:
-            meta = parse_meta_acao(acao.meta_2026, acao.meta_2027_2029)
+            meta = parse_meta_acao(acao.meta_ano, acao.meta_bloco)
             res = relatorio.resultados.acao(programa.codigo, acao.num)
             resultado = res.resultado if res else ""
             pct = percentual_meta(
@@ -323,9 +323,9 @@ def _aba_acoes(ws, relatorio: Relatorio, programas: list) -> None:
                     acao.num,
                     acao.tipo,
                     acao.produto,
-                    acao.meta_2026,
+                    acao.meta_ano,
                     meta.tipo,
-                    acao.meta_2027_2029,
+                    acao.meta_bloco,
                     resultado,
                     round(pct / 100, 6) if pct is not None else "",
                     status,
@@ -520,18 +520,18 @@ def _aba_alertas(ws, relatorio: Relatorio, ugs: set[str]) -> None:
     _finalizar(ws, len(colunas))
 
 
-def _aba_dicionario(ws) -> None:
+def _aba_dicionario(ws, relatorio: Relatorio) -> None:
     colunas = [("Campo", 28), ("Descrição", 110)]
     _cabecalho(ws, colunas)
     itens = [
         ("UG", "Unidade gestora (código e nome)."),
         ("UO", "Unidade orçamentária; a chave usada é o nome normalizado."),
-        ("Programa", "Código do programa do PPA 2026-2029."),
+        ("Programa", f"Código do programa do {relatorio.perfil.titulo_ppa}."),
         ("Indicador", "Indicador do PPA, com referência atual e referência 2029."),
-        ("Ação", "Ação do PPA, com meta 2026 e meta 2027-2029."),
-        ("Meta 2026", "Meta do PPA. Pode ser percentual do plano (ex.: 25%) ou quantidade."),
+        ("Ação", "Ação do PPA, com a meta do exercício e a meta do bloco seguinte."),
+        ("Meta do exercício", "Meta do PPA para o ano. Pode ser percentual do plano/bloco ou quantidade."),
         ("Tipo da meta", "Classificação: percentual_plano, quantidade, nao_definida ou texto."),
-        ("Resultado 2026", "Resultado informado pela UG; pendente nesta versão."),
+        ("Resultado do exercício", "Resultado informado pela UG; pendente nesta versão."),
         ("% da meta", "Resultado ÷ meta, quando meta e resultado são compatíveis."),
         ("Liquidado (R$)", "Liquidação líquida: realizado + anulados negativos."),
         ("% do programa", "Parcela da UG no total do programa, quando compartilhado."),
@@ -570,9 +570,9 @@ def gerar_xlsx(
     _aba_execucao_programa(wb.create_sheet("Execucao_Programa"), relatorio, programas)
     _aba_execucao_detalhe(wb.create_sheet("Execucao_Detalhe"), relatorio, ugs)
     _aba_alertas(wb.create_sheet("Alertas"), relatorio, ugs)
-    _aba_dicionario(wb.create_sheet("Dicionario"))
+    _aba_dicionario(wb.create_sheet("Dicionario"), relatorio)
 
-    wb.properties.title = "Raio-X Técnico do PPA 2026-2029"
+    wb.properties.title = relatorio.perfil.titulo
     wb.properties.subject = "Planilha de apoio"
     wb.properties.creator = "pmp_raiox"
     wb.properties.description = f"Gerado em {relatorio.gerado_em:%d/%m/%Y %H:%M}"

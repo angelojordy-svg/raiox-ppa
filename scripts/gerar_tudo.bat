@@ -13,6 +13,8 @@ if not exist "%PY%" (
   echo ERRO: python nao encontrado. Crie .venv na pasta ou ajuste o caminho do motor.
   exit /b 2
 )
+set "ANO=%~1"
+if "%ANO%"=="" set "ANO=2026"
 echo ATENCAO: gere as 35 UGs somente depois de validar o prototipo.
-"%PY%" -m pmp_raiox --todas %*
+"%PY%" -m pmp_raiox --ano %ANO% --todas
 exit /b %errorlevel%

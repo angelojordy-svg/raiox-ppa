@@ -13,5 +13,7 @@ if not exist "%PY%" (
   echo ERRO: python nao encontrado. Crie .venv na pasta ou ajuste o caminho do motor.
   exit /b 2
 )
-"%PY%" -m pmp_raiox --ug 004 %*
+set "ANO=%~1"
+if "%ANO%"=="" set "ANO=2026"
+"%PY%" -m pmp_raiox --ano %ANO% --ug 004
 exit /b %errorlevel%

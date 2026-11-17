@@ -3,7 +3,7 @@
 **Dono:** equipe técnica de planejamento/controle (a definir).
 **Produto:** diagnóstico completo por UG do PPA 2026-2029, interno e independente do RAM.
 **Unidade:** UG (35), com subseções por UO quando a UG tiver mais de uma UO.
-**Status:** versão completa das 35 UGs gerada e publicada em 2026-11-17; aguardando validação final.
+**Status:** versão completa de 2026 publicada; perfis multi-ano 2026-2029 preparados; aguardando validação final.
 
 ## Onde está o quê
 
@@ -15,8 +15,9 @@
 - Saídas: `_dados/Saida/raiox/` (`index.html`, `ug_*.html`, `raiox_apoio_completo.xlsx`, `pdf/`)
 - Kernel compartilhado: `pmp_kernel` (`..\..\_kernel`), se necessário
 - Gerar protótipo (UG 004): `scripts\gerar_prototipo.bat`
-- Gerar as 35 UGs: `scripts\gerar_tudo.bat`
-- Gerar PDFs: `scripts\gerar_pdf.bat`
+- Gerar as 35 UGs: `scripts\gerar_tudo.bat` (2026) ou `scripts\gerar_ano.bat 2027`
+- Gerar PDFs: `scripts\gerar_pdf.bat` (2026) ou `scripts\gerar_pdf.bat 2027`
+- Publicar site: `scripts\publicar_site.bat --ano 2027`
 - Testes + lint: `scripts\verificar.bat`
 - Abrir protótipo: `scripts\abrir_prototipo.bat`
 - Código: https://github.com/angelojordy-svg/raiox-ppa

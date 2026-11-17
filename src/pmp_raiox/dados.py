@@ -11,6 +11,7 @@ from typing import Any
 from openpyxl import load_workbook
 
 from . import config
+from .perfil import PERFIL_2026, PerfilAno
 from .texto import codigo, norm, norm_cabecalho, norm_uo, nome, texto
 
 
@@ -31,11 +32,22 @@ class Acao:
     nome: str
     tipo: str
     produto: str
-    meta_2026: str
-    meta_2027_2029: str
+    meta_ano: str
+    meta_bloco: str
+    meta_ano_label: str
+    meta_bloco_label: str
+    meta_ano_tipo: str
     objetivo: str
     obs_emenda: str
     pagina: int | str
+
+    @property
+    def meta_2026(self) -> str:
+        return self.meta_ano
+
+    @property
+    def meta_2027_2029(self) -> str:
+        return self.meta_bloco
 
 
 @dataclass
@@ -205,6 +217,7 @@ class UGExecucao:
 @dataclass
 class Contas:
     arquivo: Path
+    perfil: PerfilAno
     ugs: dict[str, UGExecucao]
     programa_ug: dict[tuple[str, str], Execucao]
     programa_total: dict[str, Execucao]
@@ -228,14 +241,17 @@ class Contas:
         )
 
 
-def _arquivo_contas_mais_recente(pasta: Path | None = None) -> Path:
+def _arquivo_contas_mais_recente(
+    padrao: str = "despesas_programas_2026_*.xlsx",
+    pasta: Path | None = None,
+) -> Path:
     base = pasta or (config.DADOS / "Saida")
     candidatos = sorted(
-        base.glob("despesas_programas_2026_*.xlsx"),
+        base.glob(padrao),
         key=lambda p: (p.stat().st_mtime, p.name),
     )
     if not candidatos:
-        raise FileNotFoundError(f"Nenhum despesas_programas_2026_*.xlsx encontrado em {base}")
+        raise FileNotFoundError(f"Nenhum {padrao} encontrado em {base}")
     return candidatos[-1]
 
 
@@ -265,8 +281,12 @@ MAPA_PROGRAMAS = {
 }
 
 
-def carregar_ppa(caminho: Path | str | None = None) -> PPA:
-    arquivo = Path(caminho) if caminho else config.PPA_PADRAO
+def carregar_ppa(
+    caminho: Path | str | None = None,
+    perfil: PerfilAno | None = None,
+) -> PPA:
+    perfil = perfil or PERFIL_2026
+    arquivo = Path(caminho) if caminho else perfil.ppa_path
     if not arquivo.exists():
         raise FileNotFoundError(f"PPA não encontrado: {arquivo}")
     wb = load_workbook(arquivo, read_only=True, data_only=True)
@@ -340,6 +360,9 @@ def carregar_ppa(caminho: Path | str | None = None) -> PPA:
             )
 
         acoes = _indice_cabecalho(wb["Ações"])
+        colunas_meta = [(perfil.meta_ano_col, perfil.meta_ano_label)]
+        if perfil.meta_bloco_col:
+            colunas_meta.append((perfil.meta_bloco_col, perfil.meta_bloco_label))
         _exigir(
             acoes,
             [
@@ -348,8 +371,7 @@ def carregar_ppa(caminho: Path | str | None = None) -> PPA:
                 ("nome da acao", "Nome da Ação"),
                 ("tipo a p", "Tipo (A/P)"),
                 ("produto esperado", "Produto Esperado"),
-                ("meta 2026", "Meta 2026"),
-                ("meta 2027 2029", "Meta 2027-2029"),
+                *colunas_meta,
                 ("objetivo da acao", "Objetivo da Ação"),
                 ("obs emenda", "Obs. Emenda"),
                 ("pagina", "Página"),
@@ -366,6 +388,12 @@ def carregar_ppa(caminho: Path | str | None = None) -> PPA:
             pagina = linha[acoes["pagina"]]
             if isinstance(pagina, float) and pagina.is_integer():
                 pagina = int(pagina)
+            meta_ano = texto(linha[acoes[perfil.meta_ano_col]])
+            meta_bloco = (
+                texto(linha[acoes[perfil.meta_bloco_col]])
+                if perfil.meta_bloco_col and perfil.meta_bloco_col in acoes
+                else ""
+            )
             programa.acoes.append(
                 Acao(
                     codigo_programa=codigo_programa,
@@ -373,8 +401,11 @@ def carregar_ppa(caminho: Path | str | None = None) -> PPA:
                     nome=texto(linha[acoes["nome da acao"]]),
                     tipo=texto(linha[acoes["tipo a p"]]),
                     produto=texto(linha[acoes["produto esperado"]]),
-                    meta_2026=texto(linha[acoes["meta 2026"]]),
-                    meta_2027_2029=texto(linha[acoes["meta 2027 2029"]]),
+                    meta_ano=meta_ano,
+                    meta_bloco=meta_bloco,
+                    meta_ano_label=perfil.meta_ano_label,
+                    meta_bloco_label=perfil.meta_bloco_label,
+                    meta_ano_tipo=perfil.meta_ano_tipo,
                     objetivo=texto(linha[acoes["objetivo da acao"]]),
                     obs_emenda=texto(linha[acoes["obs emenda"]]),
                     pagina=pagina if pagina is not None else "",
@@ -422,8 +453,12 @@ def _data(valor: Any) -> date | None:
         return None
 
 
-def carregar_contas(caminho: Path | str | None = None) -> Contas:
-    arquivo = Path(caminho) if caminho else _arquivo_contas_mais_recente()
+def carregar_contas(
+    caminho: Path | str | None = None,
+    perfil: PerfilAno | None = None,
+) -> Contas:
+    perfil = perfil or PERFIL_2026
+    arquivo = Path(caminho) if caminho else _arquivo_contas_mais_recente(perfil.contas_glob)
     wb = load_workbook(arquivo, read_only=True, data_only=True)
     ws = wb["Consolidado"]
     try:
@@ -503,14 +538,14 @@ def carregar_contas(caminho: Path | str | None = None) -> Contas:
                 ug = UGExecucao(
                     codigo=ug_cod,
                     nome_contas=ug_nome_contas,
-                    nome_oficial=config.nome_ug(ug_cod),
+                    nome_oficial=perfil.nome_ug(ug_cod),
                 )
                 ugs[ug_cod] = ug
             uo = ug.uos.get(uo_norm)
             if uo is None:
                 uo = UOExecucao(
                     nome=uo_nome,
-                    nome_oficial=config.nome_uo(ug_cod, uo_norm, uo_nome),
+                    nome_oficial=perfil.nome_uo(ug_cod, uo_norm, uo_nome),
                 )
                 ug.uos[uo_norm] = uo
             if codigo(uo_raw):
@@ -581,6 +616,7 @@ def carregar_contas(caminho: Path | str | None = None) -> Contas:
 
         return Contas(
             arquivo=arquivo,
+            perfil=perfil,
             ugs=ugs,
             programa_ug=programa_ug,
             programa_total=programa_total,

@@ -335,7 +335,7 @@ def _metas_nao_atingidas(relatorio: Relatorio) -> list[dict[str, str]]:
             res = relatorio.resultados.indicador(programa.codigo, indicador.n)
             if not res or not res.resultado:
                 continue
-            meta = res.meta_2026 or indicador.ref_2029
+            meta = res.meta_ano or indicador.ref_2029
             valor = percentual(res.resultado, meta)
             if valor is None or valor >= 100:
                 continue
@@ -355,7 +355,7 @@ def _metas_nao_atingidas(relatorio: Relatorio) -> list[dict[str, str]]:
             res = relatorio.resultados.acao(programa.codigo, acao.num)
             if not res or not res.resultado:
                 continue
-            meta = parse_meta_acao(acao.meta_2026, acao.meta_2027_2029)
+            meta = parse_meta_acao(acao.meta_ano, acao.meta_bloco)
             valor = percentual_meta(
                 res.resultado,
                 meta.valor,
@@ -371,7 +371,7 @@ def _metas_nao_atingidas(relatorio: Relatorio) -> list[dict[str, str]]:
                     "item": f"Ação {acao.num}",
                     "descricao": acao.nome,
                     "resultado": res.resultado,
-                    "meta": acao.meta_2026 or res.meta_anual or "—",
+                    "meta": acao.meta_ano or res.meta_anual or "—",
                     "percentual": valor,
                     "situacao": "Não atingida",
                 }
@@ -384,7 +384,8 @@ def _tabela_metas_nao_atingidas(relatorio: Relatorio) -> str:
     if not itens:
         return (
             '<div class="empty">Nenhuma meta não atingida registrada. '
-            "A lista será preenchida quando os resultados de 2026 forem informados.</div>"
+            f"A lista será preenchida quando os resultados de {relatorio.perfil.ano} forem "
+            "informados.</div>"
         )
     linhas = []
     for item in itens:
@@ -425,7 +426,11 @@ def _qualidade_evidencias(relatorio: Relatorio) -> str:
     return (
         '<div class="grid grid-4">'
         + kpi("Itens avaliáveis", str(n_itens), "indicadores + ações", "teal")
-        + kpi("Com resultado", str(n_resultados), "resultados 2026 informados")
+        + kpi(
+            "Com resultado",
+            str(n_resultados),
+            f"resultados de {relatorio.perfil.ano} informados",
+        )
         + kpi("Evidências", str(n_evidencias), "arquivos/links registrados", "green")
         + kpi(
             "Pendentes",
@@ -445,7 +450,7 @@ def _qualidade_index(relatorio: Relatorio) -> str:
         1
         for programa in relatorio.ppa.programas
         for acao in programa.acoes
-        if parse_meta_acao(acao.meta_2026, acao.meta_2027_2029).tipo == "percentual_plano"
+        if parse_meta_acao(acao.meta_ano, acao.meta_bloco).tipo == "percentual_plano"
     )
     return (
         '<div class="grid grid-2">'
@@ -453,12 +458,12 @@ def _qualidade_index(relatorio: Relatorio) -> str:
         "A UG 004 tem duas UOs com código 001. O raio-x usa o nome normalizado da UO como "
         "chave.</div>"
         f'<div class="note warn"><strong>Metas:</strong> {n_meta} de '
-        f"{len(relatorio.ppa.acoes)} ações têm meta 2026 em percentual do plano, não em "
-        "quantidade física.</div>"
+        f"{len(relatorio.ppa.acoes)} ações têm {relatorio.perfil.meta_ano_label} em "
+        "percentual do plano/bloco, não em quantidade física.</div>"
         '<div class="note warn"><strong>Execução:</strong> a base é de liquidações; não há '
         "empenhado/pago no Consolidado.</div>"
-        '<div class="note info"><strong>Resultados:</strong> a base não tem resultados de 2026; '
-        "o protótipo usa placeholders.</div>"
+        f'<div class="note info"><strong>Resultados:</strong> a base não tem resultados de '
+        f"{relatorio.perfil.ano}; o relatório usa placeholders.</div>"
         f'<div class="note info"><strong>Cobertura:</strong> '
         f"{relatorio.n_programas_com_execucao} de {relatorio.n_programas} programas com "
         f"execução; {relatorio.n_programas_sem_execucao} sem execução "
@@ -474,12 +479,17 @@ def gerar_pagina_index(relatorio: Relatorio, ugs_geradas: set[str]) -> str:
     total_ugs = len(relatorio.ugs)
     kpis = (
         '<div class="kpi-grid">'
-        + kpi("Programas do PPA", str(relatorio.n_programas), "2026-2029", "teal")
+        + kpi(
+            "Programas do PPA",
+            str(relatorio.n_programas),
+            relatorio.perfil.ppa_periodo,
+            "teal",
+        )
         + kpi("Indicadores", str(relatorio.n_indicadores), "referência atual e 2029", "teal")
-        + kpi("Ações", str(relatorio.n_acoes), "meta 2026", "teal")
+        + kpi("Ações", str(relatorio.n_acoes), relatorio.perfil.meta_ano_label, "teal")
         + kpi("UGs", str(total_ugs), "unidades gestoras com execução", "teal")
         + kpi(
-            "Liquidado 2026",
+            f"Liquidado {relatorio.perfil.ano}",
             brl_curto(relatorio.total_geral),
             f"{brl_curto(relatorio.total_fora_ppa)} fora do PPA",
             "green",
@@ -501,7 +511,7 @@ def gerar_pagina_index(relatorio: Relatorio, ugs_geradas: set[str]) -> str:
     panorama = sec(
         "panorama",
         "Panorama",
-        "O PPA no primeiro ano de execução",
+        f"O PPA em {relatorio.perfil.ano}",
         f'<div class="grid grid-2"><div class="card"><h3>Cobertura do PPA nas contas</h3>'
         f"{_stack_cobertura(relatorio)}"
         f'<p class="small muted">O programa 6200 (emenda parlamentar) está fora do PPA e '
@@ -623,12 +633,13 @@ def gerar_pagina_index(relatorio: Relatorio, ugs_geradas: set[str]) -> str:
         _metodologia(relatorio),
     )
     hero_html = hero(
-        "Raio-X Técnico do PPA 2026-2029",
-        "Panorama, cobertura e mapa das 35 UGs · versão completa",
+        relatorio.perfil.titulo,
+        f"Panorama, cobertura e mapa das 35 UGs · {relatorio.perfil.ano}",
         "RX",
         arquivo_contas=relatorio.contas.arquivo.name,
         gerado_em=relatorio.gerado_em,
         acoes='<a class="btn" href="#ugs">Mapa de UGs</a>',
+        perfil=relatorio.perfil,
         link_indice=False,
     )
     topbar_html = topbar(
@@ -644,10 +655,11 @@ def gerar_pagina_index(relatorio: Relatorio, ugs_geradas: set[str]) -> str:
     )
     corpo = kpis + panorama + cobertura + ranking + ugs + transversais + qualidade + metodologia
     return layout(
-        "Raio-X Técnico do PPA 2026-2029",
+        relatorio.perfil.titulo,
         hero_html,
         topbar_html,
         corpo,
+        perfil=relatorio.perfil,
     )
 
 

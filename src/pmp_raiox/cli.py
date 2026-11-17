@@ -6,10 +6,11 @@ import argparse
 import json
 from pathlib import Path
 
-from . import __version__, config
+from . import __version__
 from .dados import carregar_contas, carregar_ppa
 from .html import gerar_html_index, gerar_html_ug
 from .modelo import construir_relatorio
+from .perfil import perfil_por_ano
 from .resultados import carregar_resultados, criar_templates
 from .texto import texto
 from .xlsx import gerar_xlsx
@@ -25,8 +26,8 @@ def _codigos_ug(valores: list[str]) -> set[str]:
     return codigos
 
 
-def _nome_xlsx(codigos: set[str], todas: bool) -> str:
-    if todas or len(codigos) == len(config.UG_NOMES):
+def _nome_xlsx(codigos: set[str], todas: bool, perfil) -> str:
+    if todas or len(codigos) == len(perfil.ug_nomes):
         return "raiox_apoio_completo.xlsx"
     if len(codigos) == 1:
         return f"raiox_apoio_ug{next(iter(codigos))}.xlsx"
@@ -43,11 +44,14 @@ def _manifesto(
     resultados: Path | None,
 ) -> dict:
     return {
-        "produto": "Raio-X Técnico do PPA 2026-2029",
+        "produto": relatorio.perfil.titulo,
+        "ano": relatorio.perfil.ano,
+        "ppa_periodo": relatorio.perfil.ppa_periodo,
+        "meta_ano_label": relatorio.perfil.meta_ano_label,
         "versao": __version__,
         "gerado_em": relatorio.gerado_em.isoformat(timespec="seconds"),
         "fontes": {
-            "ppa": str(relatorio.fontes.get("ppa", config.PPA_PADRAO)),
+            "ppa": str(relatorio.fontes.get("ppa", relatorio.perfil.ppa_path)),
             "contas": str(relatorio.fontes.get("contas", relatorio.contas.arquivo)),
             "periodo_contas": {
                 "inicio": str(relatorio.contas.data_min),
@@ -98,7 +102,13 @@ def _manifesto(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Gera o Raio-X Técnico do PPA 2026-2029 por UG."
+        description="Gera o Raio-X Técnico do PPA por UG e por ano."
+    )
+    parser.add_argument(
+        "--ano",
+        default="2026",
+        choices=["2026", "2027", "2028", "2029"],
+        help="Ano do exercício. Padrão: 2026.",
     )
     parser.add_argument(
         "--ug",
@@ -111,8 +121,8 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Gera todas as 35 UGs (usar somente após validar o protótipo).",
     )
-    parser.add_argument("--ppa", type=Path, default=None, help="Caminho do PPA 2026-2029.")
-    parser.add_argument("--contas", type=Path, default=None, help="Caminho do Consolidado 2026.")
+    parser.add_argument("--ppa", type=Path, default=None, help="Caminho do PPA.")
+    parser.add_argument("--contas", type=Path, default=None, help="Caminho do Consolidado do ano.")
     parser.add_argument(
         "--resultados",
         type=Path,
@@ -123,7 +133,7 @@ def main(argv: list[str] | None = None) -> int:
         "--saida",
         type=Path,
         default=None,
-        help="Pasta de saída. Padrão: _dados/Saida/raiox.",
+        help="Pasta de saída. Padrão: a pasta do perfil do ano.",
     )
     parser.add_argument(
         "--sem-xlsx",
@@ -136,31 +146,33 @@ def main(argv: list[str] | None = None) -> int:
         help="Não gera HTML.",
     )
     args = parser.parse_args(argv)
+    perfil = perfil_por_ano(args.ano)
 
-    codigos = set(config.UG_NOMES) if args.todas else (_codigos_ug(args.ug) or {"004"})
-    desconhecidas = sorted(codigos - set(config.UG_NOMES))
+    codigos = set(perfil.ug_nomes) if args.todas else (_codigos_ug(args.ug) or {"004"})
+    desconhecidas = sorted(codigos - set(perfil.ug_nomes))
     if desconhecidas:
         parser.error(f"UG(s) desconhecida(s): {', '.join(desconhecidas)}")
 
-    ppa = carregar_ppa(args.ppa)
-    contas = carregar_contas(args.contas)
-    pasta_resultados = args.resultados or config.ENTRADA
-    resultados = carregar_resultados(pasta_resultados)
+    ppa = carregar_ppa(args.ppa, perfil)
+    contas = carregar_contas(args.contas, perfil)
+    pasta_resultados = args.resultados or perfil.entrada_dir
+    resultados = carregar_resultados(pasta_resultados, perfil)
     relatorio = construir_relatorio(
         ppa,
         contas,
         resultados,
         fontes={
-            "ppa": Path(args.ppa) if args.ppa else config.PPA_PADRAO,
+            "ppa": Path(args.ppa) if args.ppa else perfil.ppa_path,
             "contas": Path(args.contas) if args.contas else contas.arquivo,
         },
+        perfil=perfil,
     )
 
-    destino = Path(args.saida) if args.saida else config.SAIDA
+    destino = Path(args.saida) if args.saida else perfil.saida_dir
     destino.mkdir(parents=True, exist_ok=True)
     entrada = Path(pasta_resultados)
     entrada.mkdir(parents=True, exist_ok=True)
-    templates = criar_templates(entrada)
+    templates = criar_templates(entrada, perfil)
 
     saidas: list[Path] = []
     if not args.sem_html:
@@ -174,7 +186,7 @@ def main(argv: list[str] | None = None) -> int:
                 relatorio,
                 destino,
                 codigos_ug=codigos,
-                nome=_nome_xlsx(codigos, args.todas),
+                nome=_nome_xlsx(codigos, args.todas, perfil),
             )
         )
 
@@ -201,7 +213,7 @@ def main(argv: list[str] | None = None) -> int:
         for template in templates:
             print(f"  {template}")
     print(
-        f"Contas: {contas.arquivo.name} | "
+        f"Ano: {relatorio.perfil.ano} | Contas: {contas.arquivo.name} | "
         f"{contas.linhas} linhas | "
         f"liquidado {relatorio.total_geral:,.2f}"
     )

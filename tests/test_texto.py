@@ -97,3 +97,10 @@ def test_percentual_meta():
     assert percentual_meta("50000 Unid", 25, tipo_meta="percentual_plano") is None
     assert percentual_meta("40000", 50123, tipo_meta="quantidade") == pytest.approx(79.8036, rel=1e-3)
     assert percentual_meta("30", 25, tipo_meta="percentual_plano", meta_anual="50") == 60
+
+
+def test_percentual_meta_bloco():
+    assert percentual_meta("50", 75, tipo_meta="percentual_plano", meta_ano_tipo="bloco") is None
+    assert percentual_meta(
+        "50", 75, tipo_meta="percentual_plano", meta_ano_tipo="bloco", meta_anual="100"
+    ) == 50
