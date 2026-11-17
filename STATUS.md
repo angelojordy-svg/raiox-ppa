@@ -6,7 +6,7 @@
 - Entradas: PPA 2026-2029; contas 2026 (`despesas_programas_2026_0101-1711.xlsx`).
 - Saídas: `_dados/Saida/raiox/` com `index.html`, 35 páginas `ug_*.html`,
   `raiox_apoio_completo.xlsx`, 36 PDFs em `pdf/`, `manifest.json` e modelos CSV.
-- Job: nenhum (sob demanda).
+- Job: integrado ao pipeline diário do motor (`dashboard` → `raiox` → `publicar_raiox`), na tarefa existente `Orcamento Publico diario`; o raio-x detecta o ano mais recente (2026-2029).
 - Testes: `scripts\verificar.bat` — 57 passed; `ruff check src tests` sem erros.
 - Números: 87 programas, 247 indicadores, 306 ações, 35 UGs; 74 programas com execução;
   20 sem indicador; R$ 2.031.195.913,51 liquidados.

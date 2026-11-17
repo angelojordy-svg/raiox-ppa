@@ -15,6 +15,6 @@ if not exist "%PY%" (
 )
 set "ANO=%~1"
 set "BASE=%SAIDA%"
-if not "%ANO%"=="" set "BASE=%SAIDA%\%ANO%"
+if not "%ANO%"=="" if not "%ANO%"=="2026" set "BASE=%SAIDA%\%ANO%"
 "%PY%" "%~dp0gerar_pdf.py" --saida "%BASE%" --pdf "%BASE%\pdf"
 exit /b %errorlevel%

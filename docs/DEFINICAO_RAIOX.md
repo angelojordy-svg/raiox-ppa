@@ -199,7 +199,24 @@ Comandos: `scripts\gerar_ano.bat 2027`, `scripts\gerar_pdf.bat 2027` e
 - Atualização do site: gerar HTML/PDF, copiar `index.html`, `ug_*.html` e `pdf/` para o repo
   de deploy e commitar.
 
-### 7.6 Formatos de saída
+### 7.6 Job automático
+
+O raio-x é um passo do pipeline diário existente, **depois** do dashboard PMP (que gera
+`despesas_programas_*.xlsx`). Não duplica a coleta de dados.
+
+| Passo | O que faz | Depende de |
+|---|---|---|
+| `raiox` | gera HTML/XLSX e PDFs por UG | `dashboard` |
+| `publicar_raiox` | copia HTML/PDF para o repo do site e faz commit/push | `raiox` |
+
+- Tarefa: `Orcamento Publico diario` (já existente), sem nova tarefa.
+- Ano: o job detecta o ano mais recente com `despesas_programas_<ano>_*.xlsx` (2026-2029).
+- Falha: o passo fica `erro`, mas o pipeline continua; o site permanece na última versão boa.
+- Em 2027-2029, usa o perfil do ano e a meta do bloco; a meta anual deve ser informada na coleta.
+- A alteração do pipeline (`pipeline_diario.py`) e o card no `mapa_projetos.html` foram feitos
+  no motor local; o commit do motor deve ser feito junto com as demais alterações pendentes.
+
+### 7.7 Formatos de saída
 
 - **HTML interativo** com filtros, busca, ordenação de tabelas, navegação e impressão.
 - **PDF/print por UG** pela impressão do HTML no navegador (CSS `@media print`) ou por

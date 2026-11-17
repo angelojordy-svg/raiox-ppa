@@ -17,6 +17,7 @@
 - Gerar protótipo (UG 004): `scripts\gerar_prototipo.bat`
 - Gerar as 35 UGs: `scripts\gerar_tudo.bat` (2026) ou `scripts\gerar_ano.bat 2027`
 - Gerar PDFs: `scripts\gerar_pdf.bat` (2026) ou `scripts\gerar_pdf.bat 2027`
+- Job diário: `scripts\job_diario.bat` (gera) e `scripts\job_publicar.bat` (publica), chamados pelo pipeline do motor após o dashboard
 - Publicar site: `scripts\publicar_site.bat --ano 2027`
 - Testes + lint: `scripts\verificar.bat`
 - Abrir protótipo: `scripts\abrir_prototipo.bat`

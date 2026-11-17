@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import subprocess
 from datetime import datetime
 from pathlib import Path
 
@@ -69,6 +70,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--origem", type=Path, default=None)
     parser.add_argument("--site", type=Path, default=None)
     parser.add_argument("--prefixo", default=None)
+    parser.add_argument("--publicar", action="store_true", help="commit e push no repo do site")
     args = parser.parse_args(argv)
 
     origem = Path(args.origem) if args.origem else _origem_padrao(args.ano)
@@ -95,6 +97,19 @@ def main(argv: list[str] | None = None) -> int:
     shutil.copytree(origem / "pdf", pdf_destino)
     _pdf_index(pdf_destino)
 
+    status = {
+        "gerado_em": datetime.now().strftime("%d/%m/%Y %H:%M"),
+        "versao": datetime.now().strftime("%Y%m%d"),
+        "ano": args.ano,
+    }
+    (destino / "status.json").write_text(
+        json.dumps(status, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    if destino != site:
+        status_raiz = {**status, "path": f"/{prefixo}/"}
+        (site / "status.json").write_text(
+            json.dumps(status_raiz, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
     (site / ".nojekyll").write_text("", encoding="utf-8")
     fonte = ""
     manifesto = origem / "manifest.json"
@@ -122,6 +137,34 @@ Produto interno de diagnóstico; não é o RAM oficial nem o resumo executivo de
         encoding="utf-8",
     )
     print(f"Site atualizado em {destino}")
+    if args.publicar:
+        alteracoes = subprocess.run(
+            ["git", "-C", str(site), "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+        )
+        if not alteracoes.stdout.strip():
+            print("Nada novo para publicar.")
+            return 0
+        passos = [
+            ["git", "-C", str(site), "add", "-A"],
+            [
+                "git",
+                "-C",
+                str(site),
+                "commit",
+                "-m",
+                f"site: atualiza raio-x {args.ano} {status['gerado_em']}",
+            ],
+            ["git", "-C", str(site), "push"],
+        ]
+        for comando in passos:
+            resultado = subprocess.run(comando, capture_output=True, text=True)
+            if resultado.returncode != 0:
+                print(resultado.stdout.strip())
+                print(resultado.stderr.strip())
+                return resultado.returncode
+        print("Site publicado no GitHub.")
     return 0
 
 
