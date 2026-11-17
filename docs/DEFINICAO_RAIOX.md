@@ -173,7 +173,17 @@ Quando a UG tem mais de uma UO, a seção de execução mostra o desdobramento p
 - Qualidade/ausência de evidências.
 - Exceções de qualidade de dados.
 
-### 7.4 Formatos de saída
+### 7.4 Publicação
+
+- **Código:** https://github.com/angelojordy-svg/raiox-ppa (público; somente código, docs,
+  testes e scripts).
+- **Site:** https://angelojordy-svg.github.io/raiox-ppa-site/ (repo separado, público, com
+  apenas HTML/PDF gerados).
+- O site não recebe `_dados`, o `manifest.json` com caminhos absolutos nem caches.
+- Atualização do site: gerar HTML/PDF, copiar `index.html`, `ug_*.html` e `pdf/` para o repo
+  de deploy e commitar.
+
+### 7.5 Formatos de saída
 
 - **HTML interativo** com filtros, busca, ordenação de tabelas, navegação e impressão.
 - **PDF/print por UG** pela impressão do HTML no navegador (CSS `@media print`) ou por
@@ -442,6 +452,8 @@ Comandos:
 - `_dados/Saida/raiox/pdf/` — 35 PDFs por UG + PDF do índice.
 - `_dados/Saida/raiox/manifest.json` — fontes, escopo, contagens e PDFs.
 - `_dados/Saida/raiox/entrada/` — modelos CSV.
+- Código: https://github.com/angelojordy-svg/raiox-ppa
+- Site: https://angelojordy-svg.github.io/raiox-ppa-site/
 
 Verificação: 53 testes passaram; `ruff check src tests` sem erros. A UG 004 tem 30 páginas
 no PDF; o detalhamento completo por programa → ação LOA (projeto/atividade) → natureza

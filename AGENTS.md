@@ -3,7 +3,7 @@
 **Dono:** equipe técnica de planejamento/controle (a definir).
 **Produto:** diagnóstico completo por UG do PPA 2026-2029, interno e independente do RAM.
 **Unidade:** UG (35), com subseções por UO quando a UG tiver mais de uma UO.
-**Status:** versão completa das 35 UGs gerada em 2026-11-17; aguardando validação final.
+**Status:** versão completa das 35 UGs gerada e publicada em 2026-11-17; aguardando validação final.
 
 ## Onde está o quê
 
@@ -19,6 +19,9 @@
 - Gerar PDFs: `scripts\gerar_pdf.bat`
 - Testes + lint: `scripts\verificar.bat`
 - Abrir protótipo: `scripts\abrir_prototipo.bat`
+- Código: https://github.com/angelojordy-svg/raiox-ppa
+- Site: https://angelojordy-svg.github.io/raiox-ppa-site/
+- Deploy do site: repo separado `_publico/raiox-ppa-site` (somente HTML/PDF gerados)
 
 ## Regras
 

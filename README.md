@@ -40,4 +40,10 @@ Em `_dados/Saida/raiox/`:
 - Programa compartilhado mostra a parte de cada UG e o total do programa.
 - O detalhe LOA fica no cartão do programa, ao lado das ações do PPA.
 
+## Repositórios e publicação
+
+- Código: https://github.com/angelojordy-svg/raiox-ppa
+- Site: https://angelojordy-svg.github.io/raiox-ppa-site/
+- Deploy: repo separado `raiox-ppa-site`, com apenas HTML/PDF gerados.
+
 Definição completa: `docs/DEFINICAO_RAIOX.md`.

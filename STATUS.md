@@ -1,6 +1,6 @@
 # Status — Raio-X Técnico do PPA 2026-2029
 
-**Versão completa (2026-11-17) — 35 UGs geradas; aguardando validação final.**
+**Versão completa (2026-11-17) — 35 UGs geradas e publicadas; aguardando validação final.**
 
 - Escopo: diagnóstico por UG do PPA 2026-2029.
 - Entradas: PPA 2026-2029; contas 2026 (`despesas_programas_2026_0101-1711.xlsx`).
@@ -18,4 +18,6 @@
 - Pendências: validação final; resultados/evidências; validar mapa PPA↔UG dos 13 sem
   execução; confirmar dono/rateio dos compartilhados; obter empenhado/pago se necessário;
   definir meta física anual das ações com meta percentual.
+- Publicação: código em https://github.com/angelojordy-svg/raiox-ppa e site em
+  https://angelojordy-svg.github.io/raiox-ppa-site/.
 - Próximos passos: revisar as 35 UGs; carregar resultados/evidências; reprocessar.
