@@ -11,6 +11,7 @@ from .perfil import PERFIL_2026, PerfilAno
 from .crosswalk import Crosswalk, LoaRef, contar_refs, refs_para
 from .dados import Contas, Execucao, PPA, Programa
 from .resultados import Resultados
+from .valores_loa import ValoresLOA
 from .texto import (
     formatar_brl_curto,
     formatar_pct,
@@ -215,6 +216,7 @@ class Relatorio:
     contas: Contas
     perfil: PerfilAno
     crosswalk: Crosswalk
+    valores_loa: ValoresLOA
     resultados: Resultados
     ugs: dict[str, ResumoUG]
     cobertura: dict[str, CoberturaPrograma]
@@ -676,9 +678,11 @@ def construir_relatorio(
     fontes: dict[str, Path] | None = None,
     perfil: PerfilAno | None = None,
     crosswalk: Crosswalk | None = None,
+    valores_loa: ValoresLOA | None = None,
 ) -> Relatorio:
     perfil = perfil or PERFIL_2026
     crosswalk = crosswalk or Crosswalk()
+    valores_loa = valores_loa or ValoresLOA()
     resultados = resultados if resultados is not None else Resultados()
     cobertura: dict[str, CoberturaPrograma] = {}
     programas_por_ug: dict[str, list[ProgramaUG]] = defaultdict(list)
@@ -928,8 +932,9 @@ def construir_relatorio(
         Alerta(
             "media",
             "execucao_liquidacao",
-            "A base de contas disponível é de liquidações (Valor R$), com anulados negativos. "
-            "Empenhado e pago não estão no Consolidado; o raio-x mostra liquidado líquido.",
+            "A base de contas é de liquidações (Valor R$), com anulados negativos. O raio-x "
+            "mostra liquidado líquido; fixado inicial e empenhado/pago vêm de fontes locais "
+            "(LOA e empenhos), quando disponíveis. Autorizado não está consolidado por programa.",
         )
     )
     alertas_globais.append(
@@ -961,11 +966,23 @@ def construir_relatorio(
             )
         )
 
+    if valores_loa.por_programa:
+        alertas_globais.append(
+            Alerta(
+                "info",
+                "valores_loa",
+                f"Valores LOA: fixado inicial de {valores_loa.data_loa or 'data n/d'}; "
+                f"empenhado/pago de {valores_loa.data_empenhos or 'data n/d'}. "
+                "Autorizado por programa não está no export local.",
+            )
+        )
+
     return Relatorio(
         ppa=ppa,
         contas=contas,
         perfil=perfil,
         crosswalk=crosswalk,
+        valores_loa=valores_loa,
         resultados=resultados,
         ugs=ugs,
         cobertura=cobertura,

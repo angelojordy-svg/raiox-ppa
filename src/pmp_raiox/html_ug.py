@@ -416,12 +416,49 @@ def _tabela_execucao_programa(programa_ug: ProgramaUG, detalhes: list) -> str:
     )
 
 
+def _valores_programa(programa: Programa, relatorio: Relatorio) -> str:
+    valores = relatorio.valores_loa.programa(programa.codigo)
+    if valores is None or all(
+        valor is None
+        for valor in (
+            valores.fixado,
+            valores.empenhado,
+            valores.pago,
+            valores.a_pagar,
+        )
+    ):
+        return ""
+    liquidado = relatorio.contas.total_programa(programa.codigo)
+    celulas = [
+        ("Fixado inicial", valores.fixado),
+        ("Autorizado", None),
+        ("Empenhado", valores.empenhado),
+        ("Liquidado", liquidado),
+        ("Pago", valores.pago),
+        ("A pagar", valores.a_pagar),
+    ]
+    cabecalho = "".join(f"<th>{e(label)}</th>" for label, _ in celulas)
+    corpo = "".join(
+        f'<td class="right num">{brl(valor) if valor is not None else "n/d"}</td>'
+        for _, valor in celulas
+    )
+    return (
+        '<div class="table-wrap"><table class="table table-compact">'
+        f"<thead><tr>{cabecalho}</tr></thead><tbody><tr>{corpo}</tr></tbody></table></div>"
+        '<p class="small muted">Fixado inicial: LOA 2026; Empenhado/Pago/A pagar: empenhos '
+        "2026 (Prefeitura, Câmara e SAAEP); Liquidado: base de liquidações. Valores totais "
+        "do programa; a parte desta UG aparece na execução resumida. Autorizado por programa "
+        "e valores após créditos adicionais não estão no export local.</p>"
+    )
+
+
 def _programa_card(
     programa_ug: ProgramaUG,
     resumo: ResumoUG,
     resultados: Resultados,
     detalhes_loa: list,
     perfil: PerfilAno,
+    relatorio: Relatorio,
 ) -> str:
     programa = programa_ug.programa
     status: list[str] = []
@@ -490,7 +527,14 @@ def _programa_card(
         '<div class="panel"><h4>Ações do programa</h4>'
         f"{_tabela_acoes([programa], resultados, f'acao-{programa.codigo}', perfil, loa_refs=programa_ug.loa_refs)}</div>"
         f"{_execucao_programa_compacto(programa_ug, resumo, perfil)}"
-        '<div class="panel" id="loa-'
+        + (
+            '<div class="panel"><h4>Valores LOA do programa</h4>'
+            + _valores_programa(programa, relatorio)
+            + "</div>"
+            if _valores_programa(programa, relatorio)
+            else ""
+        )
+        + '<div class="panel" id="loa-'
         f'{e(programa.codigo)}"><h4>Execução LOA — projeto/atividade e natureza</h4>'
         '<p class="small muted">Código da ação orçamentária (projeto/atividade) e sua '
         "natureza/elemento. O vínculo com a ação do PPA é uma sugestão por similaridade de "
@@ -754,9 +798,10 @@ def _notas_qualidade(relatorio: Relatorio) -> str:
         f"{len(relatorio.ppa.acoes)} ações usam {relatorio.perfil.meta_ano_label} em "
         "percentual do plano/bloco, não em quantidade física. O raio-x classifica a meta e "
         "não calcula execução física contra percentual sem a meta anual informada.</div>"
-        '<div class="note warn"><strong>Execução:</strong> o Consolidado é de liquidações '
-        "(Valor R$), com anulados negativos. Empenhado e pago não estão disponíveis nesta "
-        "base. O raio-x mostra liquidado líquido.</div>"
+        f'<div class="note warn"><strong>Execução:</strong> o Consolidado {relatorio.perfil.ano} '
+        "é de liquidações (Valor R$), com anulados negativos. Fixado inicial e empenhado/pago "
+        "vêm de fontes locais (LOA/empenhos); autorizado por programa não está consolidado. "
+        "O raio-x mostra liquidado líquido.</div>"
         f'<div class="note info"><strong>Resultados:</strong> {n_resultados} de {n_itens} '
         f"indicadores/ações têm resultado {relatorio.perfil.ano} na base. O relatório usa "
         "placeholders; a camada de resultados pode ser alimentada por CSV/XLSX.</div>"
@@ -962,7 +1007,12 @@ def gerar_pagina_ug(relatorio: Relatorio, resumo: ResumoUG) -> str:
         "</div>"
         + "".join(
             _programa_card(
-                p, resumo, resultados, detalhes_por_programa.get(p.codigo, []), relatorio.perfil
+                p,
+                resumo,
+                resultados,
+                detalhes_por_programa.get(p.codigo, []),
+                relatorio.perfil,
+                relatorio,
             )
             for p in resumo.programas
         ),
@@ -1010,7 +1060,8 @@ def gerar_pagina_ug(relatorio: Relatorio, resumo: ResumoUG) -> str:
         + "</div></div>"
         '<div class="note warn" style="margin-top:12px"><strong>Nota:</strong> a base é de '
         "liquidações. O valor exibido é o liquidado líquido (realizado + anulados negativos). "
-        "Empenhado e pago não estão no Consolidado.</div>",
+        "Fixado/empenhado/pago vêm de fontes locais; autorizado não consolidado por programa."
+        "</div>",
         "Visão da UG por programa, UO, fonte e mês. O detalhe por ação LOA/projeto-atividade "
         "e natureza está no cartão do programa.",
     )

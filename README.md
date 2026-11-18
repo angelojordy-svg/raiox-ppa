@@ -47,7 +47,8 @@ Em `_dados/Saida/raiox/`:
 ## Princípios
 
 - Dados reais de PPA e contas; resultados como placeholders explícitos.
-- Execução = liquidação líquida (não há empenhado/pago no Consolidado).
+- Execução = liquidação líquida; fixado inicial e empenhado/pago vêm de fontes locais
+  (LOA/empenhos). Autorizado por programa ainda não está consolidado.
 - UO identificada pelo nome normalizado (o código do Consolidado não é único).
 - Meta de ação classificada: percentual do plano, quantidade, não definida ou texto.
 - Programa compartilhado mostra a parte de cada UG e o total do programa.

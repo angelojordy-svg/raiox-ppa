@@ -114,8 +114,10 @@ saídas geradas.
 ### 6.1 Limitações que o produto deve explicitar
 
 1. **UO:** o código não é chave confiável; usar o nome normalizado.
-2. **Execução:** o Consolidado é de **liquidações**. Não há empenhado/pago. O valor é
-   liquidado líquido (realizado + anulados negativos).
+2. **Execução:** o Consolidado é de **liquidações**; o valor principal é o liquidado líquido
+   (realizado + anulados negativos). Fixado inicial vem da LOA 2026; empenhado/pago/a pagar
+   vêm dos empenhos 2026 (Prefeitura, Câmara e SAAEP). Autorizado por programa e valores após
+   créditos adicionais não estão no export local.
 3. **Meta da ação:** percentual do plano não é meta física anual. O % da meta só pode ser
    calculado quando meta e resultado são compatíveis.
 4. **Indicador:** sem meta anual, a leitura é por referência 2029 e tendência, não por
@@ -290,7 +292,8 @@ convertidas para esse formato; não há importação de código do RAM.
 - `% do programa = valor da UG ÷ total do programa` (para compartilhados).
 - Programa sem linhas no Consolidado = **sem execução registrada**.
 - Programa com linhas e líquido ≤ 0 = **execução anulada** (alerta alto).
-- Não há empenhado/pago nesta base; a tela e a planilha dizem isso explicitamente.
+- Fixado inicial/empenhado/pago vêm de fontes locais (LOA/empenhos); autorizado por programa
+  não está consolidado. A tela e a planilha registram a fonte e a data de cada valor.
 
 ### 9.2 Indicadores
 
@@ -398,7 +401,7 @@ Comandos:
 | Indicador sem meta anual | Comparar com a referência 2029 e sinalizar tendência. |
 | Programa sem execução | Mapa provisório + validação com a área técnica. |
 | Programa compartilhado | Dono provisório + parte executada por UG; validar rateio. |
-| Sem empenhado/pago | Declarar a limitação; buscar fonte complementar. |
+| Sem autorizado por programa | Declarar a limitação; buscar export da LOA/programa. |
 | Sem resultados/evidências | Placeholders e camada CSV; cobrar devolutivas. |
 | Volume de 35 UGs | Geração automatizada; validar a versão completa antes de publicar. |
 | Impressão longa | CSS de impressão, cartões abertos, quebras de página por seção. |
@@ -425,7 +428,8 @@ Comandos:
   6083, 6084 e 6085.
 - Confirmar dono e rateio dos 4 programas compartilhados.
 - Validar o crosswalk PPA ação ↔ LOA projeto/atividade (sugestões e overrides).
-- Obter fonte de empenhado/pago, se necessária.
+- Obter autorizado por programa e valores após créditos adicionais (o fixado inicial e o
+  empenhado/pago já vêm das fontes locais).
 - Definir a meta física anual das ações com meta percentual.
 - Confirmar os códigos oficiais das UOs (o Consolidado não é confiável).
 - Definir prazo/prioridade e responsável pela coleta.
@@ -498,6 +502,6 @@ Comandos:
 - Código: https://github.com/angelojordy-svg/raiox-ppa
 - Site: https://angelojordy-svg.github.io/raiox-ppa-site/
 
-Verificação: 62 testes passaram; `ruff check src tests` sem erros. A UG 004 tem 34 páginas
+Verificação: 65 testes passaram; `ruff check src tests` sem erros. A UG 004 tem 35 páginas
 no PDF; o detalhamento completo por programa → ação LOA (projeto/atividade) → natureza
 está nos cartões de programa.

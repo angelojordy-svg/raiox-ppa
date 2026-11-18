@@ -7,7 +7,7 @@
 - Saídas: `_dados/Saida/raiox/` com `index.html`, 35 páginas `ug_*.html`,
   `raiox_apoio_completo.xlsx`, 36 PDFs em `pdf/`, `manifest.json` e modelos CSV.
 - Job: integrado ao pipeline diário do motor (`dashboard` → `raiox` → `publicar_raiox`), na tarefa existente `Orcamento Publico diario`; o raio-x detecta o ano mais recente (2026-2029).
-- Testes: `scripts\verificar.bat` — 62 passed; `ruff check src tests` sem erros.
+- Testes: `scripts\verificar.bat` — 65 passed; `ruff check src tests` sem erros.
 - Números: 87 programas, 247 indicadores, 306 ações, 35 UGs; 74 programas com execução;
   20 sem indicador; R$ 2.057.509.936,33 liquidados.
   UG 004: R$ 288.307.407,68; 9 programas; 16 indicadores; 34 ações; 3 compartilhados;
@@ -20,6 +20,7 @@
   definir meta física anual das ações com meta percentual.
 - Publicação: código em https://github.com/angelojordy-svg/raiox-ppa e site em
   https://angelojordy-svg.github.io/raiox-ppa-site/.
+- Valores LOA: fixado inicial (LOA 2026) e empenhado/pago/a pagar (empenhos 2026); autorizado por programa pendente.
 - Crosswalk PPA ação ↔ LOA projeto/atividade: 154 sugestões fortes, 21 a verificar, 105 sem correspondência; override em `crosswalk_loa.csv`; validar.
 - Multi-ano: perfis 2026-2029; 2027 usa `despesas_programas_2027_*.xlsx` e o bloco de meta 2027-2029 (sem meta anual explícita).
 - Próximos passos: revisar as 35 UGs; carregar resultados/evidências; reprocessar.

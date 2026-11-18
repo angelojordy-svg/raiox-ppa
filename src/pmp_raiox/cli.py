@@ -13,6 +13,7 @@ from .html import gerar_html_index, gerar_html_ug
 from .modelo import construir_relatorio
 from .perfil import perfil_por_ano
 from .resultados import carregar_resultados, criar_templates
+from .valores_loa import carregar_valores_loa
 from .texto import texto
 from .xlsx import gerar_xlsx
 
@@ -60,8 +61,14 @@ def _manifesto(
             },
             "resultados": str(resultados) if resultados else str(entrada),
             "crosswalk": str(relatorio.crosswalk.arquivo) if relatorio.crosswalk.arquivo else "",
+            "valores_loa": {chave: str(valor) for chave, valor in relatorio.valores_loa.fontes.items()},
         },
         "crosswalk": relatorio.crosswalk_resumo,
+        "valores_loa": {
+            **relatorio.valores_loa.contar(),
+            "data_loa": str(relatorio.valores_loa.data_loa),
+            "data_empenhos": str(relatorio.valores_loa.data_empenhos),
+        },
         "escopo": {
             "todas": todas,
             "ugs": sorted(codigos),
@@ -168,6 +175,7 @@ def main(argv: list[str] | None = None) -> int:
     resultados = carregar_resultados(pasta_resultados, perfil)
     crosswalk_path = args.crosswalk or perfil.entrada_dir / "crosswalk_loa.csv"
     crosswalk = carregar_crosswalk(crosswalk_path)
+    valores_loa = carregar_valores_loa(perfil)
     relatorio = construir_relatorio(
         ppa,
         contas,
@@ -178,6 +186,7 @@ def main(argv: list[str] | None = None) -> int:
         },
         perfil=perfil,
         crosswalk=crosswalk,
+        valores_loa=valores_loa,
     )
 
     destino = Path(args.saida) if args.saida else perfil.saida_dir

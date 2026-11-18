@@ -116,6 +116,7 @@ def _leia_me(ws, relatorio: Relatorio, escopo: str) -> None:
         "7. O programa 6200 (emenda parlamentar) está fora do PPA e aparece apenas no anexo de execução.",
         "8. A aba Execucao_Detalhe traz o desdobramento Programa → Ação LOA → Natureza/Elemento.",
         "9. O crosswalk PPA ação ↔ LOA projeto/atividade é provisório; confira a coluna Crosswalk (manual/auto/verificar).",
+        "10. Fixado inicial vem da LOA 2026; empenhado/pago/a pagar dos empenhos 2026; liquidado da base de liquidações. Autorizado por programa não está no export local.",
     ]
     for nota in notas:
         cel = ws.cell(row=linha, column=1, value=nota)
@@ -194,12 +195,18 @@ def _aba_programas(ws, relatorio: Relatorio) -> None:
         ("Indicadores", 10),
         ("Ações", 8),
         ("Liquidado total (R$)", 17),
+        ("Fixado inicial (R$)", 16),
+        ("Empenhado (R$)", 16),
+        ("Pago (R$)", 16),
+        ("A pagar (R$)", 16),
+        ("Autorizado (R$)", 14),
         ("Compartilhado", 12),
         ("Vínculo provisório", 12),
     ]
     _cabecalho(ws, colunas)
     for i, programa in enumerate(relatorio.ppa.programas, start=2):
         item = relatorio.cobertura.get(programa.codigo)
+        valores = relatorio.valores_loa.programa(programa.codigo)
         _linha(
             ws,
             [
@@ -213,11 +220,16 @@ def _aba_programas(ws, relatorio: Relatorio) -> None:
                 len(programa.indicadores),
                 len(programa.acoes),
                 round(item.execucao_total if item else 0.0, 2),
+                round(valores.fixado, 2) if valores and valores.fixado is not None else "n/d",
+                round(valores.empenhado, 2) if valores and valores.empenhado is not None else "n/d",
+                round(valores.pago, 2) if valores and valores.pago is not None else "n/d",
+                round(valores.a_pagar, 2) if valores and valores.a_pagar is not None else "n/d",
+                "n/d",
                 "sim" if item and len(item.ugs_execucao) > 1 else "não",
                 "sim" if item and item.vinculo_provisorio else "não",
             ],
             i,
-            moeda={10},
+            moeda={10, 11, 12, 13, 14},
         )
     _finalizar(ws, len(colunas))
 
