@@ -1,11 +1,11 @@
 # Raio-X Técnico do PPA 2026-2029 — Definição do Projeto
 
 **Status:** definição + versão completa de 2026 + perfis multi-ano 2026-2029; aguardando validação final
-**Data:** 2026-11-17
+**Data:** 2026-11-18
 **Projeto:** `laboratorio/raiox` (promover para `planejamento/raiox` quando houver recorrência)
 **Produto:** diagnóstico técnico interno por Unidade Gestora (UG), independente do RAM
 **Público:** equipe técnica de planejamento/controle, analistas de eixo e alta gestão
-**Fonte de contas da versão completa:** `_dados/Saida/despesas_programas_2026_0101-1711.xlsx`
+**Fonte de contas da versão completa:** `_dados/Saida/despesas_programas_2026_0101-1811.xlsx`
 
 ---
 
@@ -81,7 +81,7 @@ O protótipo da **UG 004 — Fundo Municipal de Educação** foi validado e a ve
 O manifesto `manifest.json` registra o arquivo de contas usado, o período, as contagens e as
 saídas geradas.
 
-## 6. O que a base mostra (17/11/2026)
+## 6. O que a base mostra (18/11/2026)
 
 - **PPA:** 87 programas, 247 indicadores, 306 ações e 48 órgãos/entidades.
 - **20 programas sem indicador.** Nesses casos, a avaliação é pelas ações e pela análise
@@ -90,11 +90,11 @@ saídas geradas.
 - **Ações:** meta 2026 preenchida em 305 de 306 ações. Em **277 ações (90,5%)** a meta é um
   percentual do plano (ex.: 25%), não uma quantidade física. Há 28 metas de quantidade
   (Unid, Pc, kWp) e 1 ação sem meta.
-- **Contas:** 35 UGs, **43 UOs por nome** e 39.636 linhas. O código da UO no Consolidado
+- **Contas:** 35 UGs, **43 UOs por nome** e 39.901 linhas. O código da UO no Consolidado
   **não é único**: a UG 004 tem duas UOs com código 001. O raio-x usa o nome normalizado da
   UO como chave e exibe o código como referência.
-- **Execução:** R$ 2.031.195.913,51 liquidados (líquido de anulações). Desse total,
-  R$ 2.028.974.531,15 estão em programas do PPA e R$ 2.221.382,36 no programa 6200, fora do
+- **Execução:** R$ 2.057.509.936,33 liquidados (líquido de anulações). Desse total,
+  R$ 2.055.288.553,97 estão em programas do PPA e R$ 2.221.382,36 no programa 6200, fora do
   PPA.
 - **Cobertura:** 74 dos 87 programas do PPA têm execução; 13 não têm. Dos 13: 7 têm UG
   provisória, 4 não têm UG mapeada (6005, 6083, 6084, 6085) e 2 são excluídos da revisão
@@ -105,8 +105,11 @@ saídas geradas.
 - **Resultados:** a base de contas não traz resultados de 2026. O protótipo usa placeholders
   explícitos (“Aguardando devolutiva”), sem números inventados.
 - **UG 004 (protótipo):** 9 programas próprios, 16 indicadores, 34 ações, 2 UOs e
-  R$ 288.013.097,89 liquidados (14,2% do total municipal). Três programas são compartilhados
+  R$ 288.307.407,68 liquidados (14,2% do total municipal). Três programas são compartilhados
   com a UG 016; 6022 não tem execução; 6020 não tem indicador.
+- **Crosswalk LOA:** 280 ações em programas com execução têm sugestão/código P/A:
+  154 sugestões fortes, 21 a verificar e 105 sem correspondência automática. O override
+  manual fica em `entrada/crosswalk_loa.csv`.
 
 ### 6.1 Limitações que o produto deve explicitar
 
@@ -118,8 +121,8 @@ saídas geradas.
 4. **Indicador:** sem meta anual, a leitura é por referência 2029 e tendência, não por
    “meta atingida”.
 5. **Vínculo PPA ↔ LOA:** o elo disponível é o campo **Programa de governo**. Não há
-   vínculo automático PPA ação ↔ LOA ação. A execução LOA é exibida pelo código de
-   **Projeto/Atividade** da coluna correspondente no Consolidado.
+   vínculo oficial PPA ação ↔ LOA ação. O raio-x sugere um **crosswalk provisório por
+   similaridade de nomes** e aceita override manual em `crosswalk_loa.csv`; validar.
 6. **Mapa PPA órgão → UG:** provisório para os programas sem execução; validar.
 7. **Resultados/evidências:** pendentes de coleta; a camada é opcional e independente.
 
@@ -141,9 +144,9 @@ saídas geradas.
 ### 7.2 Página por UG (`ug_<código>_<slug>.html`)
 
 1. **Resumo:** KPIs e insights automáticos, sem gráficos repetidos.
-2. **Programas:** cartão por programa com ficha, objetivo, indicadores, ações do PPA, uma
-   linha de execução resumida e a **execução LOA por ação (projeto/atividade) e
-   natureza/elemento**. Filtros por busca, sem execução, sem indicador e compartilhado.
+2. **Programas:** cartão por programa com ficha, objetivo, indicadores, ações do PPA (com
+   o **código P/A da LOA sugerido**), uma linha de execução resumida e a **execução LOA
+   por ação (projeto/atividade) e natureza/elemento**. Filtros por busca, sem execução, sem indicador e compartilhado.
 3. **Execução:** visão da UG por programa, UO, fonte e mês. O detalhamento completo por
    ação LOA (projeto/atividade) e natureza/elemento fica no cartão do programa, junto às
    ações do PPA. As subseções por UO ficam nesta seção quando a UG tem mais de uma UO.
@@ -265,6 +268,7 @@ Arquivos CSV em `_dados/Saida/raiox/entrada/`:
 - `resultados_indicadores.csv`
 - `resultados_acoes.csv`
 - `evidencias.csv`
+- `crosswalk_loa.csv` — override manual do vínculo PPA ação ↔ LOA projeto/atividade.
 
 Colunas mínimas:
 
@@ -310,6 +314,8 @@ convertidas para esse formato; não há importação de código do RAM.
 - Se a UG informar `meta_anual` na camada de resultados, ela prevalece sobre o percentual do
   PPA.
 - Status: Concluída (≥100%), Em andamento (>0), Não iniciada (0), ou o status informado.
+- **Crosswalk LOA:** o código P/A exibido na ação do PPA é uma sugestão por similaridade de
+  nomes (provisório) ou um override manual; não é vínculo oficial.
 - Justificativa e próximos passos são obrigatórios quando o resultado fica abaixo da meta ou
   a ação não foi iniciada.
 
@@ -375,6 +381,7 @@ Comandos:
 
 - [x] 35 UGs cobertas, com todos os programas, indicadores e ações.
 - [x] Execução conciliada com o Consolidado (soma do detalhamento = total do PPA).
+- [x] Código P/A da LOA sugerido por ação do PPA, com override manual e marcação provisória.
 - [x] Exceções e compartilhados tratados.
 - [ ] Resultados, análises e evidências das UGs (pendente de coleta).
 - [x] Visões transversais e alertas.
@@ -408,6 +415,7 @@ Comandos:
 | Evidências | Independentes, com placeholders; camada CSV opcional. Confirmado. |
 | Escopo do protótipo | UG 004 — Educação. Confirmado e validado. |
 | Geração completa | 35 UGs geradas em 2026-11-17 (HTML + PDF + XLSX + manifesto). Confirmada. |
+| Crosswalk LOA | Provisório por similaridade + override manual; validar com a área técnica. |
 | Validação final | Pendente — revisão da versão completa. |
 | Prazo | A definir. |
 
@@ -416,6 +424,7 @@ Comandos:
 - Validar o mapa PPA órgão→UG dos 13 programas sem execução, especialmente 6005, 6053,
   6083, 6084 e 6085.
 - Confirmar dono e rateio dos 4 programas compartilhados.
+- Validar o crosswalk PPA ação ↔ LOA projeto/atividade (sugestões e overrides).
 - Obter fonte de empenhado/pago, se necessária.
 - Definir a meta física anual das ações com meta percentual.
 - Confirmar os códigos oficiais das UOs (o Consolidado não é confiável).
@@ -489,6 +498,6 @@ Comandos:
 - Código: https://github.com/angelojordy-svg/raiox-ppa
 - Site: https://angelojordy-svg.github.io/raiox-ppa-site/
 
-Verificação: 57 testes passaram; `ruff check src tests` sem erros. A UG 004 tem 30 páginas
+Verificação: 62 testes passaram; `ruff check src tests` sem erros. A UG 004 tem 34 páginas
 no PDF; o detalhamento completo por programa → ação LOA (projeto/atividade) → natureza
 está nos cartões de programa.

@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .perfil import PERFIL_2026, PerfilAno
+from .crosswalk import Crosswalk, LoaRef, contar_refs, refs_para
 from .dados import Contas, Execucao, PPA, Programa
 from .resultados import Resultados
 from .texto import (
@@ -60,6 +61,7 @@ class ProgramaUG:
     n_indicadores_sem_ref: int = 0
     n_resultados_indicadores: int = 0
     n_resultados_acoes: int = 0
+    loa_refs: dict[str, LoaRef] = field(default_factory=dict)
 
     @property
     def codigo(self) -> str:
@@ -212,6 +214,7 @@ class Relatorio:
     ppa: PPA
     contas: Contas
     perfil: PerfilAno
+    crosswalk: Crosswalk
     resultados: Resultados
     ugs: dict[str, ResumoUG]
     cobertura: dict[str, CoberturaPrograma]
@@ -277,6 +280,24 @@ class Relatorio:
     @property
     def total_geral(self) -> float:
         return self.contas.total.valor_liquido
+
+    @property
+    def crosswalk_resumo(self) -> dict[str, int]:
+        vistos: set[str] = set()
+        programas = []
+        for codigo, item in self.cobertura.items():
+            if item.status != "com_execucao" or codigo in vistos:
+                continue
+            dono = item.dono or (item.ugs_execucao[0] if item.ugs_execucao else "")
+            ug = self.ug(dono)
+            if ug is None:
+                continue
+            programa_ug = next((p for p in ug.programas if p.codigo == codigo), None)
+            if programa_ug is None:
+                continue
+            vistos.add(codigo)
+            programas.append(programa_ug)
+        return contar_refs(programas)
 
     @property
     def ranking_ugs(self) -> list[ResumoUG]:
@@ -459,9 +480,11 @@ def _programa_ug(
     resultados: Resultados,
     vinculo_provisorio: bool,
     perfil: PerfilAno,
+    crosswalk: Crosswalk,
 ) -> ProgramaUG:
     execucao = contas.execucao(programa.codigo, ug)
     execucao_global = contas.total_programa(programa.codigo)
+    loa_refs = refs_para(programa, execucao, crosswalk)
     outras: list[UGRef] = []
     for outra in exec_ugs:
         if outra == ug:
@@ -517,6 +540,7 @@ def _programa_ug(
         n_indicadores_sem_ref=sem_ref,
         n_resultados_indicadores=resultados_ind,
         n_resultados_acoes=resultados_acao,
+        loa_refs=loa_refs,
     )
 
 
@@ -651,8 +675,10 @@ def construir_relatorio(
     resultados: Resultados | None = None,
     fontes: dict[str, Path] | None = None,
     perfil: PerfilAno | None = None,
+    crosswalk: Crosswalk | None = None,
 ) -> Relatorio:
     perfil = perfil or PERFIL_2026
+    crosswalk = crosswalk or Crosswalk()
     resultados = resultados if resultados is not None else Resultados()
     cobertura: dict[str, CoberturaPrograma] = {}
     programas_por_ug: dict[str, list[ProgramaUG]] = defaultdict(list)
@@ -696,6 +722,7 @@ def construir_relatorio(
                         resultados,
                         vinculo_provisorio,
                         perfil,
+                        crosswalk,
                     )
                 )
             cobertura[codigo] = CoberturaPrograma(
@@ -733,6 +760,7 @@ def construir_relatorio(
                     resultados,
                     True,
                     perfil,
+                    crosswalk,
                 )
             )
             cobertura[codigo] = CoberturaPrograma(
@@ -913,10 +941,31 @@ def construir_relatorio(
         )
     )
 
+    resumo_crosswalk = contar_refs(
+        [
+            programa_ug
+            for ug in ugs.values()
+            for programa_ug in ug.programas_proprios
+        ]
+    )
+    if resumo_crosswalk["total"]:
+        alertas_globais.append(
+            Alerta(
+                "media" if resumo_crosswalk["auto_fraco"] or resumo_crosswalk["sem"] else "info",
+                "crosswalk_loa",
+                f"Crosswalk PPA ação ↔ LOA projeto/atividade: "
+                f"{resumo_crosswalk['manual']} manual(is), "
+                f"{resumo_crosswalk['auto']} sugestão(ões) forte(s), "
+                f"{resumo_crosswalk['auto_fraco']} a verificar e "
+                f"{resumo_crosswalk['sem']} sem correspondência. Validar.",
+            )
+        )
+
     return Relatorio(
         ppa=ppa,
         contas=contas,
         perfil=perfil,
+        crosswalk=crosswalk,
         resultados=resultados,
         ugs=ugs,
         cobertura=cobertura,

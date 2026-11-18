@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 from . import __version__
+from .crosswalk import carregar_crosswalk, criar_template_crosswalk
 from .dados import carregar_contas, carregar_ppa
 from .html import gerar_html_index, gerar_html_ug
 from .modelo import construir_relatorio
@@ -58,7 +59,9 @@ def _manifesto(
                 "fim": str(relatorio.contas.data_max),
             },
             "resultados": str(resultados) if resultados else str(entrada),
+            "crosswalk": str(relatorio.crosswalk.arquivo) if relatorio.crosswalk.arquivo else "",
         },
+        "crosswalk": relatorio.crosswalk_resumo,
         "escopo": {
             "todas": todas,
             "ugs": sorted(codigos),
@@ -130,6 +133,12 @@ def main(argv: list[str] | None = None) -> int:
         help="Pasta com resultados_indicadores.csv, resultados_acoes.csv e evidencias.csv.",
     )
     parser.add_argument(
+        "--crosswalk",
+        type=Path,
+        default=None,
+        help="CSV de override do crosswalk PPA ação ↔ LOA projeto/atividade.",
+    )
+    parser.add_argument(
         "--saida",
         type=Path,
         default=None,
@@ -157,6 +166,8 @@ def main(argv: list[str] | None = None) -> int:
     contas = carregar_contas(args.contas, perfil)
     pasta_resultados = args.resultados or perfil.entrada_dir
     resultados = carregar_resultados(pasta_resultados, perfil)
+    crosswalk_path = args.crosswalk or perfil.entrada_dir / "crosswalk_loa.csv"
+    crosswalk = carregar_crosswalk(crosswalk_path)
     relatorio = construir_relatorio(
         ppa,
         contas,
@@ -166,6 +177,7 @@ def main(argv: list[str] | None = None) -> int:
             "contas": Path(args.contas) if args.contas else contas.arquivo,
         },
         perfil=perfil,
+        crosswalk=crosswalk,
     )
 
     destino = Path(args.saida) if args.saida else perfil.saida_dir
@@ -173,6 +185,7 @@ def main(argv: list[str] | None = None) -> int:
     entrada = Path(pasta_resultados)
     entrada.mkdir(parents=True, exist_ok=True)
     templates = criar_templates(entrada, perfil)
+    templates.extend(criar_template_crosswalk(entrada))
 
     saidas: list[Path] = []
     if not args.sem_html:

@@ -31,6 +31,9 @@ def test_planilha_apoio(relatorio, tmp_path):
         assert indicadores.max_row >= 17
         acoes = wb["Acoes"]
         assert acoes.max_row >= 35
+        cabecalho = [c.value for c in next(acoes.iter_rows(min_row=1, max_row=1))]
+        assert "LOA código" in cabecalho
+        assert "Crosswalk" in cabecalho
         detalhe = wb["Execucao_Detalhe"]
         assert detalhe.max_row >= 50
         leia = wb["Leia-me"]

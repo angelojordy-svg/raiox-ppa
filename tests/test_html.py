@@ -16,6 +16,9 @@ def test_gera_pagina_ug(relatorio, tmp_path):
     assert "loa-detalhe-6024" in html
     assert "Execução LOA" in html
     assert "Código P/A" in html
+    assert "Ação do PPA" in html
+    assert "LOA 2." in html
+    assert "provisório" in html
     assert "projeto/atividade" in html
     assert "Imprimir / PDF" in html
     assert "Expandir programas" in html

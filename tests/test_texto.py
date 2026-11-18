@@ -11,6 +11,7 @@ from pmp_raiox.texto import (
     parse_meta_acao,
     parse_numero,
     percentual_meta,
+    similaridade_nomes,
     tendencia,
 )
 
@@ -104,3 +105,9 @@ def test_percentual_meta_bloco():
     assert percentual_meta(
         "50", 75, tipo_meta="percentual_plano", meta_ano_tipo="bloco", meta_anual="100"
     ) == 50
+
+
+def test_similaridade_nomes():
+    assert similaridade_nomes("Manutenção do Transporte Escolar", "Manutenção do Transporte Escolar") == 1.0
+    assert similaridade_nomes("Dívida Interna", "Dívida Externa") < 1.0
+    assert similaridade_nomes("", "x") == 0.0

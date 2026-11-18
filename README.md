@@ -42,7 +42,7 @@ Em `_dados/Saida/raiox/`:
 - `pdf/` — 35 PDFs por UG + PDF do índice.
 - `raiox_apoio_completo.xlsx` — planilha de apoio completa.
 - `manifest.json` — fontes, escopo, contagens, PDFs e saídas.
-- `entrada/` — modelos CSV de resultados e evidências.
+- `entrada/` — modelos CSV de resultados, evidências e `crosswalk_loa.csv`.
 
 ## Princípios
 
@@ -52,6 +52,8 @@ Em `_dados/Saida/raiox/`:
 - Meta de ação classificada: percentual do plano, quantidade, não definida ou texto.
 - Programa compartilhado mostra a parte de cada UG e o total do programa.
 - O detalhe LOA fica no cartão do programa, ao lado das ações do PPA.
+- O código P/A da LOA é sugerido por similaridade de nomes e pode ser corrigido em
+  `crosswalk_loa.csv` (vínculo provisório; validar).
 
 ## Repositórios e publicação
 

@@ -27,6 +27,7 @@ from .html_base import (
     td,
     topbar,
 )
+from .crosswalk import LoaRef
 from .modelo import (
     Alerta,
     ProgramaUG,
@@ -218,9 +219,11 @@ def _tabela_acoes(
     perfil: PerfilAno,
     *,
     incluir_programa: bool = False,
+    loa_refs: dict[str, LoaRef] | None = None,
 ) -> str:
     if not any(programa.acoes for programa in programas):
         return '<div class="empty">Programa sem ação no PPA.</div>'
+    loa_refs = loa_refs or {}
     linhas = []
     for programa in programas:
         for acao in programa.acoes:
@@ -252,6 +255,17 @@ def _tabela_acoes(
             if resultado and resultado.proximos_passos:
                 nota += (
                     f'<span class="cell-note">Próximos passos: {e(resultado.proximos_passos)}</span>'
+                )
+            ref = loa_refs.get(acao.num)
+            if ref is None:
+                nota += '<span class="cell-note">LOA: sem correspondência automática.</span>'
+            elif not ref.codigo:
+                nota += '<span class="cell-note">LOA: sem vínculo manual.</span>'
+            else:
+                tom = "ok" if ref.origem == "manual" else ("warn" if ref.origem == "auto-fraco" else "info")
+                nota += (
+                    f'<span class="cell-note">LOA {e(ref.codigo)} — {e(ref.nome)} '
+                    f"({brl_curto(ref.valor)}) {badge(ref.rotulo, tom)}</span>"
                 )
             linha = "<tr>"
             if incluir_programa:
@@ -286,7 +300,7 @@ def _tabela_acoes(
     cabecalhos = [("Programa", "left")] if incluir_programa else []
     cabecalhos += [
         ("Nº", "center"),
-        ("Ação", "left"),
+        ("Ação do PPA", "left"),
         (perfil.meta_ano_label, "right"),
     ]
     if perfil.meta_bloco_label:
@@ -434,6 +448,14 @@ def _programa_card(
     ]
     if resumo_meta["meta_nao_definida"]:
         chips.append(badge(f"{resumo_meta['meta_nao_definida']} sem meta", "warn"))
+    if programa_ug.execucao.por_acao_loa and programa.acoes:
+        vinculadas = sum(1 for ref in programa_ug.loa_refs.values() if ref.codigo)
+        chips.append(
+            badge(
+                f"LOA: {vinculadas}/{len(programa.acoes)} ações",
+                "info" if vinculadas else "warn",
+            )
+        )
     valor = programa_ug.execucao.valor_liquido
     share = valor / resumo.execucao_total * 100 if resumo.execucao_total else 0.0
     return (
@@ -466,12 +488,13 @@ def _programa_card(
         '<div class="panel"><h4>Indicadores do programa</h4>'
         f"{_tabela_indicadores([programa], resultados, f'ind-{programa.codigo}', perfil)}</div>"
         '<div class="panel"><h4>Ações do programa</h4>'
-        f"{_tabela_acoes([programa], resultados, f'acao-{programa.codigo}', perfil)}</div>"
+        f"{_tabela_acoes([programa], resultados, f'acao-{programa.codigo}', perfil, loa_refs=programa_ug.loa_refs)}</div>"
         f"{_execucao_programa_compacto(programa_ug, resumo, perfil)}"
         '<div class="panel" id="loa-'
         f'{e(programa.codigo)}"><h4>Execução LOA — projeto/atividade e natureza</h4>'
         '<p class="small muted">Código da ação orçamentária (projeto/atividade) e sua '
-        "natureza/elemento. Não há crosswalk com a ação do PPA; o elo disponível é o programa."
+        "natureza/elemento. O vínculo com a ação do PPA é uma sugestão por similaridade de "
+        "nomes (crosswalk provisório), exibida na tabela de ações; confirme no crosswalk manual."
         "</p>"
         f"{_tabela_execucao_programa(programa_ug, detalhes_loa)}</div>"
         "</div></details>"
@@ -750,8 +773,9 @@ def _metodologia(relatorio: Relatorio, resumo: ResumoUG | None = None) -> str:
         "O código do programa é a chave dos indicadores e das ações.</p>"
         f"<p><strong>Contas {relatorio.perfil.ano}:</strong> <code>{e(relatorio.contas.arquivo.name)}</code>, "
         "aba Consolidado. O vínculo PPA↔contas é o campo <strong>Programa de governo</strong>. "
-        "Não há vínculo automático entre a ação do PPA e a ação da LOA; a ação LOA é exibida "
-        "pelo código de <strong>Projeto/Atividade</strong>.</p>"
+        "Não há vínculo oficial entre a ação do PPA e a ação da LOA; o raio-x sugere um "
+        "crosswalk por similaridade de nomes (provisório) e aceita override em "
+        "<code>crosswalk_loa.csv</code>. O código P/A da LOA é exibido na ação do PPA.</p>"
         "<p><strong>UO:</strong> a chave é o nome normalizado da unidade orçamentária; o "
         "código do Consolidado é exibido como referência e pode se repetir.</p></div>"
         '<div class="card"><h3>Regras de leitura</h3>'

@@ -11,7 +11,8 @@
 - Código: `src/pmp_raiox/`
 - PPA: `_dados/Saida/ppa_2026_2029.xlsx`
 - Contas: `_dados/Saida/despesas_programas_2026_*.xlsx` (usar o mais recente)
-- Resultados/evidências: `_dados/Saida/raiox/entrada/*.csv`
+- Resultados/evidências/crosswalk: `_dados/Saida/raiox/entrada/*.csv`
+- Crosswalk LOA: `entrada/crosswalk_loa.csv` (override manual; sugestão automática é provisória)
 - Saídas: `_dados/Saida/raiox/` (`index.html`, `ug_*.html`, `raiox_apoio_completo.xlsx`, `pdf/`)
 - Kernel compartilhado: `pmp_kernel` (`..\..\_kernel`), se necessário
 - Gerar protótipo (UG 004): `scripts\gerar_prototipo.bat`

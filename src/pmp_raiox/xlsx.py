@@ -115,6 +115,7 @@ def _leia_me(ws, relatorio: Relatorio, escopo: str) -> None:
         "6. Resultados e evidências estão pendentes; a camada de entrada aceita CSV em _dados/Saida/raiox/entrada.",
         "7. O programa 6200 (emenda parlamentar) está fora do PPA e aparece apenas no anexo de execução.",
         "8. A aba Execucao_Detalhe traz o desdobramento Programa → Ação LOA → Natureza/Elemento.",
+        "9. O crosswalk PPA ação ↔ LOA projeto/atividade é provisório; confira a coluna Crosswalk (manual/auto/verificar).",
     ]
     for nota in notas:
         cel = ws.cell(row=linha, column=1, value=nota)
@@ -287,7 +288,11 @@ def _aba_indicadores(ws, relatorio: Relatorio, programas: list) -> None:
 def _aba_acoes(ws, relatorio: Relatorio, programas: list) -> None:
     colunas = [
         ("Programa", 9),
-        ("Ação", 44),
+        ("Ação do PPA", 44),
+        ("LOA código", 12),
+        ("LOA nome", 40),
+        ("LOA liquidado (R$)", 16),
+        ("Crosswalk", 12),
         ("Nº", 6),
         ("Tipo", 12),
         ("Produto", 24),
@@ -303,6 +308,11 @@ def _aba_acoes(ws, relatorio: Relatorio, programas: list) -> None:
     ]
     _cabecalho(ws, colunas)
     linha = 2
+    refs_por_programa = {}
+    for ug in relatorio.ugs.values():
+        for programa_ug in ug.programas:
+            if programa_ug.dono == programa_ug.ug or programa_ug.codigo not in refs_por_programa:
+                refs_por_programa[programa_ug.codigo] = programa_ug.loa_refs
     for programa in programas:
         for acao in programa.acoes:
             meta = parse_meta_acao(acao.meta_ano, acao.meta_bloco)
@@ -315,11 +325,22 @@ def _aba_acoes(ws, relatorio: Relatorio, programas: list) -> None:
                 meta_anual=res.meta_anual if res else "",
             )
             status = "Pendente" if not resultado else (res.status if res and res.status else "Informado")
+            ref = refs_por_programa.get(programa.codigo, {}).get(acao.num)
+            total_exec = relatorio.contas.programa_total.get(programa.codigo)
+            valor_loa = (
+                total_exec.por_acao_loa.get(ref.codigo, 0.0)
+                if ref is not None and ref.codigo and total_exec is not None
+                else 0.0
+            )
             _linha(
                 ws,
                 [
                     programa.codigo,
                     acao.nome,
+                    ref.codigo if ref is not None and ref.codigo else "—",
+                    ref.nome if ref is not None and ref.codigo else "—",
+                    round(valor_loa, 2) if ref is not None and ref.codigo else "",
+                    ref.rotulo if ref is not None else "sem",
                     acao.num,
                     acao.tipo,
                     acao.produto,
@@ -334,7 +355,8 @@ def _aba_acoes(ws, relatorio: Relatorio, programas: list) -> None:
                     "",
                 ],
                 linha,
-                pct={10},
+                moeda={5},
+                pct={14},
             )
             linha += 1
     _finalizar(ws, len(colunas))

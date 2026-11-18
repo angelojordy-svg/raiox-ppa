@@ -207,6 +207,27 @@ def parse_meta_acao(valor: Any, meta_2027_2029: Any = "") -> MetaAcao:
     return MetaAcao(texto=s, tipo="texto", valor=n.valor, unidade=n.unidade, meta_2027_2029=s2)
 
 
+def _tokens_similares(valor: Any) -> set[str]:
+    t = unicodedata.normalize("NFKD", texto(valor))
+    t = "".join(c for c in t if not unicodedata.combining(c)).upper()
+    t = re.sub(r"[^A-Z0-9]+", " ", t)
+    return {p for p in t.split() if p}
+
+
+def similaridade_nomes(a: Any, b: Any) -> float:
+    ta = _tokens_similares(a)
+    tb = _tokens_similares(b)
+    if not ta or not tb:
+        return 0.0
+    inter = 0
+    for x in ta:
+        for y in tb:
+            if x == y or (len(x) >= 4 and len(y) >= 4 and (x.startswith(y) or y.startswith(x))):
+                inter += 1
+                break
+    return inter / min(len(ta), len(tb))
+
+
 def direcao_indicador(ref_atual: Any, ref_2029: Any) -> str | None:
     a = parse_numero(ref_atual)
     b = parse_numero(ref_2029)
